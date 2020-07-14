@@ -4,7 +4,7 @@
 
 import os
 
-ROOT_DIR = os.path.abspath(os.path.join(__file__, "../../../.."))
+ROOT_DIR = os.path.abspath(os.path.join(__file__, "../../.."))
 
 # MultiNLI paths
 multinli_train_path = os.path.join(ROOT_DIR, 'input/multinli/multinli_1.0_train.txt')

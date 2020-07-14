@@ -130,8 +130,7 @@ dmypy.json
 
 # Specific to the directory structure of contradictory_claims
 # TODO: Should the directory structure be revisited?
-*/src/*.egg-info
+src/*.egg-info
 input
 .idea
 */__pycache__/
-*/*/__pycache__/

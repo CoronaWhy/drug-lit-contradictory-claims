@@ -16,7 +16,7 @@ from .models.train_model import save_model, train_model
 def main():
     """Run main function."""
     # File paths
-    root_dir = os.path.abspath(os.path.join(__file__, "../../../.."))
+    root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
 
     # MultiNLI paths
     multinli_train_path = os.path.join(root_dir, 'input/multinli/multinli_1.0_train.txt')
