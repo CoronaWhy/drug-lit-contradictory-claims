@@ -1,0 +1,23 @@
+"""File paths used in testing."""
+
+# -*- coding: utf-8 -*-
+
+import os
+
+ROOT_DIR = os.path.abspath(os.path.join(__file__, "../../../.."))
+
+# MultiNLI paths
+multinli_train_path = os.path.join(ROOT_DIR, 'input/multinli/multinli_1.0_train.txt')
+multinli_test_path = os.path.join(ROOT_DIR, 'input/multinli-dev/multinli_1.0_dev_matched.txt')
+
+# MedNLI paths
+mednli_train_path = os.path.join(ROOT_DIR, 'input/mednli/mli_train_v1.jsonl')
+mednli_dev_path = os.path.join(ROOT_DIR, 'input/mednli/mli_dev_v1.jsonl')
+mednli_test_path = os.path.join(ROOT_DIR, 'input/mednli/mli_test_v1.jsonl')
+
+# ManConCorpus processed path
+mancon_sent_pairs = os.path.join(ROOT_DIR, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+
+# Other input paths
+drug_lex_path = os.path.join(ROOT_DIR, 'input/drugnames/DrugNames.txt')
+virus_lex_path = os.path.join(ROOT_DIR, 'input/virus-words/virus_words.txt')

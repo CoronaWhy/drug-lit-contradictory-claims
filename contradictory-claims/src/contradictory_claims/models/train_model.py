@@ -1,0 +1,266 @@
+"""Functions for building, saving, loading, and training the contradictory claims Transformer model."""
+
+# -*- coding: utf-8 -*-
+
+import os
+import pickle
+import shutil
+
+import numpy as np
+import tensorflow as tf
+import transformers
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from transformers import AutoModel, AutoModelWithLMHead, AutoTokenizer, TFAutoModel
+
+
+# import transformers
+# from tensorflow.keras.models import Model, load_model
+# from tensorflow.keras.callbacks import  ModelCheckpoint
+# from tokenizers import Tokenizer, decoders, models, pre_tokenizers, processors
+# import tensorflow.keras.backend as K
+# from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix
+
+
+def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: int = 512):
+    """
+    Encode sentences for input to Transformer models.
+
+    :param texts: list of strings to be encoded
+    :param tokenizer: tokenizer for encoding
+    :param maxlen: max number of characters of input string being encoded
+    :return: numpy array of encoded strings
+    """
+    # TODO: Intersphinx link to transformers.AutoTokenizer is failing. What's wrong with my docs/source/conf.py?
+    enc_di = tokenizer.batch_encode_plus(texts,
+                                         return_attention_mask=False,
+                                         return_token_type_ids=False,
+                                         pad_to_max_length=True,
+                                         # sep_token='[SEP]',
+                                         max_length=maxlen,
+                                         truncation=True)  # Is this what we want?
+
+    return np.array(enc_di['input_ids'])
+
+
+def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # noqa: D205
+    """
+    Build an end-to-end Transformer model. Requires a transformer of type TFAutoBert.
+    https://www.kaggle.com/xhlulu/jigsaw-tpu-distilbert-with-huggingface-and-keras
+
+    :param transformer: Transformer model
+    :param max_len: maximum length of encoded sequence
+    :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
+        is sigmoid and binary crossentropy is evaluated.
+    :return: Constructed Transformer model
+    """
+    input_word_ids = Input(shape=(max_len,), dtype=tf.int32, name="input_word_ids")
+    sequence_output = transformer(input_word_ids)[0]
+    cls_token = sequence_output[:, 0, :]
+    if multi_class:
+        out = Dense(3, activation='softmax', name='softmax')(cls_token)
+    else:
+        out = Dense(1, activation='sigmoid', name='sigmoid')(cls_token)
+
+    model = Model(inputs=input_word_ids, outputs=out)
+
+    if multi_class:
+        model.compile(Adam(lr=1e-6), loss='categorical_crossentropy',
+                      metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
+                               tf.keras.metrics.CategoricalAccuracy()])
+    else:
+        model.compile(Adam(lr=1e-6), loss='binary_crossentropy',
+                      metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
+
+    return model
+
+
+def save_model(model, transformer_dir: str = 'transformer'):
+    """
+    Save a Keras model that uses a Transformer layer.
+
+    :param model: end-to-end Transformer model
+    :param transformer_dir: directory to save model
+    :return:
+    """
+    if not os.path.exists(transformer_dir):
+        os.makedirs(transformer_dir)
+
+    transformer = model.layers[1]
+    transformer.save_pretrained(transformer_dir)
+    sigmoid = model.get_layer(index=3).get_weights()
+    pickle.dump(sigmoid, open('sigmoid.pickle', 'wb'))
+
+
+def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: int = 512, multi_class: bool = True):
+    """
+    Load a Keras model that uses a Transformer layer.
+
+    :param pickle_path: path to pickle file containing learned weights from the last layer
+    :param transformer_dir: directory of saved model
+    :param max_len: maximum length of encoded sequence
+    :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
+        is sigmoid and binary crossentropy is evaluated.
+    :return: loaded model
+    """  # is this function overriding the Tensorflow.keras.models function?
+    transformer = TFAutoModel.from_pretrained(transformer_dir)
+    model = build_model(transformer, max_len=max_len)
+    sigmoid = pickle.load(open(pickle_path, 'rb'))
+    if multi_class:
+        model.get_layer('softmax').set_weights(sigmoid)
+    else:
+        model.get_layer('sigmoid').set_weights(sigmoid)
+
+    return model
+
+
+def train_model(multi_nli_train_x: np.ndarray,
+                multi_nli_train_y: np.ndarray,
+                multi_nli_test_x: np.ndarray,
+                multi_nli_test_y: np.ndarray,
+                med_nli_train_x: np.ndarray,
+                med_nli_train_y: np.ndarray,
+                med_nli_test_x: np.ndarray,
+                med_nli_test_y: np.ndarray,
+                man_con_train_x: np.ndarray,
+                man_con_train_y: np.ndarray,
+                man_con_test_x: np.ndarray,
+                man_con_test_y: np.ndarray,
+                drug_names: list,
+                virus_names: list,
+                model_name: str,
+                continue_fine_tuning: bool = False,
+                model_continue_sigmoid_path: str = None,
+                model_continue_transformer_path: str = None,
+                use_med_nli: bool = True,
+                use_man_con: bool = True,
+                epochs: int = 3,
+                max_len: int = 512,
+                batch_size: int = 32):
+    """
+    Train the Transformer model.
+
+    :param multi_nli_train_x: MultiNLI training sentence pairs
+    :param multi_nli_train_y: MultiNLI training labels
+    :param multi_nli_test_x: MultiNLI test sentence pairs
+    :param multi_nli_test_y: MultiNLI test labels
+    :param med_nli_train_x: MedNLI training sentence pairs
+    :param med_nli_train_y: MedNLI training labels
+    :param med_nli_test_x: MedNLI test sentence pairs
+    :param med_nli_test_y: MedNLI test labels
+    :param man_con_train_x: ManConCorpus training sentence pairs
+    :param man_con_train_y: ManConCorpus training labels
+    :param man_con_test_x: ManConCorpus test sentence pairs
+    :param man_con_test_y: ManConCorpus test labels
+    :param drug_names: drug lexicon list
+    :param virus_names: virus lexicon list
+    :param model_name: model name to load from the pre-trained Transformers package. Expecting either
+        "deepset/covid_bert_base" or "allenai/biomed_roberta_base"
+    :param continue_fine_tuning: if True, continue fine tuning from a saved model
+    :param model_continue_sigmoid_path: if continue_fine_tuning is True, this is the path to the pickle file with
+        saved model weights
+    :param model_continue_transformer_path: if continue_fine_tuning is True, this is the directory for the Transformer
+        model being loaded
+    :param use_multi_nli: if True, use MultiNLI in fine-tuning
+    :param use_med_nli: if True, use MedNLI in fine-tuning
+    :param use_man_con: if True, use ManConCorpus in fine-tuning
+    :param epochs: number of epochs for training
+    :param max_len: length of encoded inputs
+    :param batch_size: batch size
+    :return: fine-tuned Transformer model
+    """
+    if model_name != 'deepset/covid_bert_base':
+        model_name = 'allenai/biomed_roberta_base'
+
+    # First load the real tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.add_tokens(drug_names + virus_names)
+
+    # TODO: still debugging this because encoding takes forever
+    # Encode all inputs
+    # print(type(multi_nli_train_x))
+    # print(multi_nli_train_x)
+    multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
+    # print(multi_nli_train_x_str)
+    # print(type(multi_nli_train_x_str))
+    multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len)
+    # print(type(multi_nli_train_x))
+    # print(multi_nli_train_x)
+    print("Done with multi_nli_train_x_str")  # noqa: T001
+
+    multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
+    multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len)
+    print("Done with multi_nli_test_x_str")  # noqa: T001
+
+    med_nli_train_x = regular_encode(med_nli_train_x.tolist(), tokenizer, maxlen=max_len)
+    print("Done with med_nli_train_x_str")  # noqa: T001
+
+    med_nli_test_x = regular_encode(med_nli_test_x.tolist(), tokenizer, maxlen=max_len)
+    print("Done with med_nli_test_x_str")  # noqa: T001
+
+    man_con_train_x = regular_encode(man_con_train_x.tolist(), tokenizer, maxlen=max_len)
+    man_con_test_x = regular_encode(man_con_test_x.tolist(), tokenizer, maxlen=max_len)
+
+    es = EarlyStopping(monitor='val_accuracy',
+                       min_delta=0.001,
+                       patience=3,
+                       verbose=1,
+                       mode='max',
+                       restore_best_weights=True)
+
+    strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    if continue_fine_tuning:
+        with strategy.scope():
+            model = load_model(model_continue_sigmoid_path, model_continue_transformer_path)
+        batch_size = 2 * strategy.num_replicas_in_sync
+    else:
+        if model_name == 'deepset/covid_bert_base':
+            model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
+            model.resize_token_embeddings(len(tokenizer))
+            os.makedirs("covid_bert_base")
+            model.save_pretrained("covid_bert_base")
+            with strategy.scope():
+                model = TFAutoModel.from_pretrained("covid_bert_base", from_pt=True)
+                model = build_model(model)
+            shutil.rmtree("covid_bert_base")
+        else:
+            model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
+            model.resize_token_embeddings(len(tokenizer))
+            os.makedirs("biomed_roberta_base")
+            model.save_pretrained("biomed_roberta_base")
+            with strategy.scope():
+                model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
+                model = build_model(model)
+            shutil.rmtree("biomed_roberta_base")
+        batch_size = 2 * strategy.num_replicas_in_sync
+
+    print(model.summary())  # noqa: T001
+
+    # Fine tune on MultiNLI
+    train_history = model.fit(multi_nli_train_x,
+                              multi_nli_train_y,
+                              batch_size=batch_size,
+                              validation_data=(multi_nli_test_x, multi_nli_test_y),
+                              callbacks=[es],
+                              epochs=epochs)
+
+    # Fine tune on MedNLI
+    if use_med_nli:
+        train_history = model.fit(med_nli_train_x, med_nli_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(med_nli_test_x, med_nli_test_y),
+                                  callbacks=[es],  # callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+
+    # Fine tune on ManConCorpus
+    if use_man_con:
+        train_history = model.fit(man_con_train_x,
+                                  man_con_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(man_con_test_x, man_con_test_y),
+                                  callbacks=[es],  # callbacks=[es, WandbCallback()]
+                                  epochs=epochs)
+
+    return model, train_history
