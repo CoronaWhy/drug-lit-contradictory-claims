@@ -72,24 +72,26 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # n
     return model
 
 
-def save_model(model, transformer_dir: str = 'output/transformer'):
+def save_model(model, timed_dir_name: bool = True, transformer_dir: str = 'output/transformer'):
     """
     Save a Keras model that uses a Transformer layer.
 
     :param model: end-to-end Transformer model
+    :param timed_dir_name: if True, save model to a directory where date is recorded
     :param transformer_dir: directory to save model
     :return:
     """
-    now = datetime.datetime.now()
-    transformer_time_dir = os.path.join(transformer_dir, "{}-{}-{}".format(now.month, now.day, now.year))
+    if timed_dir_name:
+        now = datetime.datetime.now()
+        transformer_dir = os.path.join(transformer_dir, "{}-{}-{}".format(now.month, now.day, now.year))
 
-    if not os.path.exists(transformer_time_dir):
-        os.makedirs(transformer_time_dir)
+    if not os.path.exists(transformer_dir):
+        os.makedirs(transformer_dir)
 
     transformer = model.layers[1]
-    transformer.save_pretrained(transformer_time_dir)
+    transformer.save_pretrained(transformer_dir)
     sigmoid = model.get_layer(index=3).get_weights()
-    pickle.dump(sigmoid, open(os.path.join(transformer_time_dir, 'sigmoid.pickle'), 'wb'))
+    pickle.dump(sigmoid, open(os.path.join(transformer_dir, 'sigmoid.pickle'), 'wb'))
 
 
 def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: int = 512, multi_class: bool = True):
@@ -174,10 +176,10 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # First load the real tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # NOTE: We're ignoring adding tokens for drug and virus names now because this becomes prohibitive at training time. 
+    # tokenizer.add_tokens(drug_names + virus_names)
+
+    # NOTE: We're ignoring adding tokens for drug and virus names now because this becomes prohibitive at training time.
     # TODO: Find out if this is okay....
-    
-    #tokenizer.add_tokens(drug_names + virus_names)
 
     multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
     multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len)
@@ -237,10 +239,10 @@ def train_model(multi_nli_train_x: np.ndarray,
     print(model.summary())  # noqa: T001
 
     print("Okay now it's training time.......\n\n\n")  # noqa: T001
-    if tf.test.gpu_device_name(): 
-        print('Default GPU Device:{}'.format(tf.test.gpu_device_name()))
+    if tf.test.gpu_device_name():
+        print('Default GPU Device:{}'.format(tf.test.gpu_device_name()))  # noqa: T001
     else:
-        print("Please install GPU version of TF")
+        print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
     wandb.init()
@@ -253,12 +255,12 @@ def train_model(multi_nli_train_x: np.ndarray,
                               callbacks=[es, WandbCallback()],
                               epochs=epochs)
 
-    print("passed the multiNLI train. Now the history:")
-    print(train_history)
+    print("passed the multiNLI train. Now the history:")  # noqa: T001
+    print(train_history)  # noqa: T001
 
     # Fine tune on MedNLI
     if use_med_nli:
-        train_history = model.fit(med_nli_train_x, 
+        train_history = model.fit(med_nli_train_x,
                                   med_nli_train_y,
                                   batch_size=batch_size,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
