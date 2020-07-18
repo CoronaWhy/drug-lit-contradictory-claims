@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
+import datetime
 import os
 import pickle
 import shutil
@@ -9,19 +10,13 @@ import shutil
 import numpy as np
 import tensorflow as tf
 import transformers
+import wandb
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from transformers import AutoModel, AutoModelWithLMHead, AutoTokenizer, TFAutoModel
-
-
-# import transformers
-# from tensorflow.keras.models import Model, load_model
-# from tensorflow.keras.callbacks import  ModelCheckpoint
-# from tokenizers import Tokenizer, decoders, models, pre_tokenizers, processors
-# import tensorflow.keras.backend as K
-# from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix
+from wandb.keras import WandbCallback
 
 
 def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: int = 512):
@@ -77,7 +72,7 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # n
     return model
 
 
-def save_model(model, transformer_dir: str = 'transformer'):
+def save_model(model, transformer_dir: str = 'output/transformer'):
     """
     Save a Keras model that uses a Transformer layer.
 
@@ -85,13 +80,16 @@ def save_model(model, transformer_dir: str = 'transformer'):
     :param transformer_dir: directory to save model
     :return:
     """
-    if not os.path.exists(transformer_dir):
-        os.makedirs(transformer_dir)
+    now = datetime.datetime.now()
+    transformer_time_dir = os.path.join(transformer_dir, "{}-{}-{}".format(now.month, now.day, now.year))
+
+    if not os.path.exists(transformer_time_dir):
+        os.makedirs(transformer_time_dir)
 
     transformer = model.layers[1]
-    transformer.save_pretrained(transformer_dir)
+    transformer.save_pretrained(transformer_time_dir)
     sigmoid = model.get_layer(index=3).get_weights()
-    pickle.dump(sigmoid, open('sigmoid.pickle', 'wb'))
+    pickle.dump(sigmoid, open(os.path.join(transformer_time_dir, 'sigmoid.pickle'), 'wb'))
 
 
 def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: int = 512, multi_class: bool = True):
@@ -176,32 +174,32 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # First load the real tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.add_tokens(drug_names + virus_names)
+    # NOTE: We're ignoring adding tokens for drug and virus names now because this becomes prohibitive at training time. 
+    # TODO: Find out if this is okay....
+    
+    #tokenizer.add_tokens(drug_names + virus_names)
 
-    # TODO: still debugging this because encoding takes forever
-    # Encode all inputs
-    # print(type(multi_nli_train_x))
-    # print(multi_nli_train_x)
     multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
-    # print(multi_nli_train_x_str)
-    # print(type(multi_nli_train_x_str))
     multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len)
-    # print(type(multi_nli_train_x))
-    # print(multi_nli_train_x)
     print("Done with multi_nli_train_x_str")  # noqa: T001
 
     multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
     multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len)
     print("Done with multi_nli_test_x_str")  # noqa: T001
 
-    med_nli_train_x = regular_encode(med_nli_train_x.tolist(), tokenizer, maxlen=max_len)
+    med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
+    med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len)
     print("Done with med_nli_train_x_str")  # noqa: T001
 
-    med_nli_test_x = regular_encode(med_nli_test_x.tolist(), tokenizer, maxlen=max_len)
+    med_nli_test_x_str = [str(sen) for sen in med_nli_test_x]
+    med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len)
     print("Done with med_nli_test_x_str")  # noqa: T001
 
-    man_con_train_x = regular_encode(man_con_train_x.tolist(), tokenizer, maxlen=max_len)
-    man_con_test_x = regular_encode(man_con_test_x.tolist(), tokenizer, maxlen=max_len)
+    man_con_train_x_str = [str(sen) for sen in man_con_train_x]
+    man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len)
+
+    man_con_test_x_str = [str(sen) for sen in man_con_test_x]
+    man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len)
 
     es = EarlyStopping(monitor='val_accuracy',
                        min_delta=0.001,
@@ -238,20 +236,33 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     print(model.summary())  # noqa: T001
 
+    print("Okay now it's training time.......\n\n\n")  # noqa: T001
+    if tf.test.gpu_device_name(): 
+        print('Default GPU Device:{}'.format(tf.test.gpu_device_name()))
+    else:
+        print("Please install GPU version of TF")
+
+    # Initialize WandB for tracking the training progress
+    wandb.init()
+
     # Fine tune on MultiNLI
     train_history = model.fit(multi_nli_train_x,
                               multi_nli_train_y,
                               batch_size=batch_size,
                               validation_data=(multi_nli_test_x, multi_nli_test_y),
-                              callbacks=[es],
+                              callbacks=[es, WandbCallback()],
                               epochs=epochs)
+
+    print("passed the multiNLI train. Now the history:")
+    print(train_history)
 
     # Fine tune on MedNLI
     if use_med_nli:
-        train_history = model.fit(med_nli_train_x, med_nli_train_y,
+        train_history = model.fit(med_nli_train_x, 
+                                  med_nli_train_y,
                                   batch_size=batch_size,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
-                                  callbacks=[es],  # callbacks=[es, WandbCallback()],
+                                  callbacks=[es, WandbCallback()],
                                   epochs=epochs)
 
     # Fine tune on ManConCorpus
@@ -260,7 +271,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
-                                  callbacks=[es],  # callbacks=[es, WandbCallback()]
+                                  callbacks=[es, WandbCallback()],
                                   epochs=epochs)
 
     return model, train_history

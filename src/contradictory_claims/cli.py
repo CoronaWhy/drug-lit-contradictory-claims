@@ -18,6 +18,7 @@ def main():
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
 
+    # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper dirrerctory structure and file names as follows. 
     # MultiNLI paths
     multinli_train_path = os.path.join(root_dir, 'input/multinli/multinli_1.0_train.txt')
     multinli_test_path = os.path.join(root_dir, 'input/multinli-dev/multinli_1.0_dev_matched.txt')
@@ -51,9 +52,12 @@ def main():
                                    model_name="allenai/biomed_roberta_base")
 
     # Save model
+    out_dir = 'output/working/'
     save_model(trained_model)
-    shutil.make_archive('biobert_output', 'zip', '/kaggle/working/')
-
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
+    
 
 if __name__ == '__main__':
     main()
