@@ -6,9 +6,9 @@ import os
 import unittest
 from datetime import datetime
 
-from contradictory_claims.data.preprocess_cord import filter_metadata_for_covid19
+# from contradictory_claims.data.preprocess_cord import filter_metadata_for_covid19
 
-from .constants import metadata_path, virus_lex_path, pub_date_cutoff
+from .constants import metadata_path, pub_date_cutoff, virus_lex_path
 
 
 class TestPreprocessCord(unittest.TestCase):

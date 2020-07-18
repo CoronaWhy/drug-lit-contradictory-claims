@@ -7,9 +7,9 @@ import shutil
 
 import click
 
-from .data.preprocess_cord import filter_metadata_for_covid19
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
+from .data.preprocess_cord import filter_metadata_for_covid19
 from .models.train_model import save_model, train_model
 
 
@@ -42,7 +42,7 @@ def main():
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
 
     # Load and preprocess CORD-19 data
-    covid19_df = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
+    covid19_df = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)  # noqa: F841
 
     # Load BERT train and test data
     multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
