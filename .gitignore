@@ -134,3 +134,8 @@ src/*.egg-info
 input
 .idea
 */__pycache__/
+output
+slurm*
+submit_train.sh
+biobert*
+wandb
