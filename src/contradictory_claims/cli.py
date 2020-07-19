@@ -9,6 +9,7 @@ import click
 
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
+from .data.preprocess_cord import filter_metadata_for_covid19
 from .models.train_model import save_model, train_model
 
 
@@ -17,6 +18,12 @@ def main():
     """Run main function."""
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
+
+    # CORD-19 metadata path
+    metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+
+    # CORD-19 publication cut off date
+    pub_date_cutoff = '2019-10-01'
 
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
     # directory structure and file names as follows.
@@ -36,7 +43,10 @@ def main():
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
 
-    # Load data
+    # Load and preprocess CORD-19 data
+    covid19_df = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)  # noqa: F841
+
+    # Load BERT train and test data
     multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
         load_multi_nli(multinli_train_path, multinli_test_path)
     med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
