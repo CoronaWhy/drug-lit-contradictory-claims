@@ -7,7 +7,7 @@ import os
 ROOT_DIR = os.path.abspath(os.path.join(__file__, "../../.."))
 
 # CORD-19 paths
-metadata_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/metadata.csv')
+metadata_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/test_metadata.csv')
 
 # CORD-19 publication cut off date
 pub_date_cutoff = '2019-10-01'
