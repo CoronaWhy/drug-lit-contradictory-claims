@@ -21,9 +21,8 @@ class TestPreprocessCord(unittest.TestCase):
 
     def test_pub_date_cutoff(self):
         """Test that publish date cut-off is in the correct format."""
-        self.assertIsInstance(datetime.strptime('2019-10-01', "%Y-%m-%d"),datetime)
+        self.assertIsInstance(datetime.strptime(pub_date_cutoff, "%Y-%m-%d"), datetime)
 #        try:
-##        with self.assertRaises(ValueError):
-            datetime.strptime(pub_date_cutoff, "%Y-%m-%d")
+#            datetime.strptime(pub_date_cutoff, "%Y-%m-%d")
 #        except ValueError:
 #            raise ValueError("Incorrect date format, should be YYYY-MM-DD")
