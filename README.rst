@@ -12,8 +12,8 @@ To download this code and install in development mode, do the following:
     $ cd drug-lit-contradictory-claims
     $ pip install -e .
 
-Testing
--------
+Testing |build|
+---------------
 To test this code, please use ``tox``:
 
 .. code-block::
@@ -46,3 +46,7 @@ command-line interface as follows:
     $ # Make sure that installation was successful as described above
     $
     $ python -m contradictory_claims
+
+.. |build| image:: https://travis-ci.com/CoronaWhy/drug-lit-contradictory-claims.svg?branch=master
+    :target: https://travis-ci.com/CoronaWhy/drug-lit-contradictory-claims
+    :alt: Build Status
