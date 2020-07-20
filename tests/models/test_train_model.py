@@ -64,4 +64,5 @@ class TestTrainModel(unittest.TestCase):
 
     def tearDown(self):
         """Clean-up after all tests have run."""
-        shutil.rmtree(self.out_dir)
+        if os.path.isdir(self.out_dir):
+            shutil.rmtree(self.out_dir)
