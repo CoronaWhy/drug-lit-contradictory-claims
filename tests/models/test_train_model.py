@@ -61,3 +61,6 @@ class TestTrainModel(unittest.TestCase):
         # What's a good way to test this?
         # TODO: Implement something
         pass
+
+    def tearDown(self):
+        shutil.rmtree(self.out_dir)
