@@ -139,3 +139,4 @@ slurm*
 submit_train.sh
 biobert*
 wandb
+tests/models/test_output/
