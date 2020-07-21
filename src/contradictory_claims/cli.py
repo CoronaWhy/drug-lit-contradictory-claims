@@ -9,7 +9,7 @@ import click
 
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
-from .data.preprocess_cord import filter_metadata_for_covid19
+from .data.preprocess_cord import extract_json_to_dataframe, filter_metadata_for_covid19
 from .models.train_model import save_model, train_model
 
 
@@ -21,6 +21,12 @@ def main():
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+
+    # CORD-19 json files zip folder path
+    json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+
+    # Path for temporary file storage during CORD-19 processing
+    json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
 
     # CORD-19 publication cut off date
     pub_date_cutoff = '2019-10-01'
@@ -44,7 +50,14 @@ def main():
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
 
     # Load and preprocess CORD-19 data
-    covid19_df = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)  # noqa: F841
+    # Extract names of files containing convid-19 synonymns in abstract/title
+    # and published after a suitable cut-off date
+    covid19_metadata = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
+    pdf_filenames = list(covid19_metadata.pdf_json_files)
+    pmc_filenames = list(covid19_metadata.pmc_json_files)
+    # Extract full text for the files identified in previous step
+    covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,  # noqa: F841
+                                           pdf_filenames, pmc_filenames)
 
     # Load BERT train and test data
     multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
