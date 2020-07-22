@@ -4,4 +4,3 @@
 
 from .data.make_dataset import *  # noqa:F401,F403
 from .models import train_model  # noqa:F401
-from .claims  import extract_claims
