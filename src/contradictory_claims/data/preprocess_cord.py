@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import re
 from typing import List
 from zipfile import ZipFile
 
@@ -17,7 +18,7 @@ def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_dat
     :param metadata_path: path to CORD-19 metadata.csv file
     :param virus_lex_path: path to COVID-19 lexicon
     :param pub_date_cutoff: cut-off for publication date in the format 'yyyy-mm-dd'
-    :return: Metadata for filtered publications
+    :return: Dataframe of metadata for filtered publications
     """
     metadata_df = pd.read_csv(metadata_path)
 
@@ -55,6 +56,7 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
     """
     covid19_dict = {}
 
+    # Replace characters with their readable format
     replace_dict = {'â€œ': '“',
                     'â€': '”',
                     'â€™': '’',
@@ -64,6 +66,7 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                     'â€¢': '-',
                     'â€¦': '…'}
 
+    # TODO: Parallelize the code below
     with ZipFile(json_text_file_dir, 'r') as zipobj:
         list_of_filenames = zipobj.namelist()
         # print('Number of files to iterate over:',len(list_of_filenames))
@@ -114,3 +117,59 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
 #            print('Number of files read:', iter_num)
 
     return pd.DataFrame.from_dict(covid19_dict, orient='index')
+
+
+def construct_regex_match_pattern(search_terms: List[str], search_type: bool = 0):
+    """
+    Construct regex search pattern for the specified terms.
+
+    :param terms_dict: list of search terms
+    :param search_type: 1 = exact pattern, 0 = fuzzy pattern
+    :return: Regex search pattern
+    """
+    if search_type == 1:
+        exact_pattern = '|'.join(search_terms)
+
+        return exact_pattern
+
+    else:
+        # TODO: fix flake8 error code FS001
+        fuzzy_terms = ['.*%s.*' % i for i in search_terms]  # noqa: FS001
+        fuzzy_pattern = '|'.join(fuzzy_terms)
+
+        return fuzzy_pattern
+
+
+def extract_regex_pattern(section_list: List[str], pattern: str):
+    """
+    Extract list of section names that match the specified regex pattern.
+
+    :param section_list: list of section names to search in
+    :param pattern: regex pattern to search for
+    :return: List of extracted section names
+    """
+    r = re.compile(pattern, re.IGNORECASE)
+    extracted_list = list(filter(r.match, section_list))
+    # remaining_list = list(set(section_list) - set(extracted_list))
+
+    return extracted_list
+
+
+def clean_text(input_data):
+    """
+    Filter text to keep only sentences containing at least 3 meaningful words.
+
+    :param input_data: pandas dataframe with publication text
+    :return: clean dataframe
+    """
+    # List of words to ignore
+    rep = {"text": "", "cite_spans": "", "ref_spans": "", "section": "", "abstract": "",
+           "biorxiv preprint": "", "medrxiv preprint": "", "doi:": ""}
+    rep = {re.escape(k): v for k, v in rep.items()}
+    pattern = re.compile("|".join(rep.keys()))
+    sentences_temp = [pattern.sub(lambda m: rep[re.escape(m.group(0))], s) for s in input_data.sentence.str.lower()]
+    pattern = re.compile(".*[A-Za-z].*")
+    sentences_to_keep = [(bool(re.search(pattern, s))) & (len(s.split(' ')) > 2) for s in sentences_temp]
+    input_processed = input_data.loc[sentences_to_keep, :]
+
+    return input_processed

@@ -29,6 +29,9 @@ pmc_filenames = ['document_parses/pmc_json/PMC1054884.xml.json',
 # CORD-19 publication cut off date
 pub_date_cutoff = '2019-10-01'
 
+# CORD-19 dataframe path
+sample_covid19_df_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19_processed/test_covid19.csv')
+
 # MultiNLI paths
 multinli_train_path = os.path.join(ROOT_DIR, 'input/multinli/multinli_1.0_train.txt')
 multinli_test_path = os.path.join(ROOT_DIR, 'input/multinli-dev/multinli_1.0_dev_matched.txt')
