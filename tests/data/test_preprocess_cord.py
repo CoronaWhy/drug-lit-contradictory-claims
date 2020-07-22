@@ -58,4 +58,4 @@ class TestPreprocessCord(unittest.TestCase):
         """Test that text is cleaned properly."""
         covid19_df = pd.read_csv(sample_covid19_df_path)
         clean_df = clean_text(covid19_df)
-        self.assertEqual(len(clean_df), 5)
+        self.assertEqual(len(clean_df), 6)

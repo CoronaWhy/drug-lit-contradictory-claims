@@ -6,6 +6,6 @@ ug7v899j,"var genes are by default silent since they are located at the nuclear 
 testcorduid,1556,Background
 testcorduid,medRxiv preprint,Abstract
 testcorduid,Abstract text,Abstract
-testcorduid,abstract text: A test,Abstract
-testcorduid,ref_spans: 1 2 3 4 5 Another test,Abstract
+testcorduid,abstract text A test,Abstract
+testcorduid,ref_spans: Yet another test,Abstract
 testcorduid,section: Conslusion: We show that remdesivir is a candidate for treatment of covid-19.,Abstract
