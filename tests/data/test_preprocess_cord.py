@@ -11,8 +11,8 @@ from contradictory_claims.data.preprocess_cord import clean_text, construct_rege
     extract_json_to_dataframe, extract_regex_pattern, filter_metadata_for_covid19
 
 from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
-    sample_covid19_df_path, sample_json_temp_path, sample_json_text_file_dir, sample_metadata_path,\
-    sample_virus_lex_path
+    sample_covid19_df_path, sample_json_temp_path, sample_json_text_file_dir,\
+    sample_metadata_path, sample_virus_lex_path
 
 
 class TestPreprocessCord(unittest.TestCase):
@@ -31,8 +31,13 @@ class TestPreprocessCord(unittest.TestCase):
 #        except ValueError:
 #            raise ValueError("Incorrect date format, should be YYYY-MM-DD")
 
+    def filter_metadata_for_covid19(self):
+        """Test that CORD-19 metadata is filtered properly."""
+        covid_metadata = filter_metadata_for_covid19(sample_metadata_path, sample_virus_lex_path, pub_date_cutoff)
+        self.assertEqual(len(covid_metadata), 4)
+
     def test_extract_json_to_dataframe(self):
-        """Test that json files are loaded properly."""
+        """Test that CORD-19 json files are loaded properly."""
         covid_metadata = filter_metadata_for_covid19(sample_metadata_path, sample_virus_lex_path, pub_date_cutoff)
         covid19_df = extract_json_to_dataframe(covid_metadata, sample_json_text_file_dir, sample_json_temp_path,
                                                pdf_filenames, pmc_filenames)
@@ -58,4 +63,4 @@ class TestPreprocessCord(unittest.TestCase):
         """Test that text is cleaned properly."""
         covid19_df = pd.read_csv(sample_covid19_df_path)
         clean_df = clean_text(covid19_df)
-        self.assertEqual(len(clean_df), 6)
+        self.assertEqual(len(clean_df), 7)

@@ -4,6 +4,7 @@
 
 import json
 import re
+from datetime import datetime
 from typing import List
 from zipfile import ZipFile
 
@@ -33,8 +34,12 @@ def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_dat
         covid_19_terms = f.read().splitlines()
         covid_19_term_pattern = '|'.join([i.lower() for i in covid_19_terms])
 
-    covid19_df = metadata_df.loc[metadata_df.title_abstract.str.contains(covid_19_term_pattern)]
-    covid19_df = covid19_df.loc[metadata_df['publish_time'] > pub_date_cutoff]
+    covid19_df = metadata_df.loc[metadata_df.title_abstract.str.contains(covid_19_term_pattern)]\
+                            .copy().reset_index(drop=True)
+
+    covid19_df['publish_time'] = pd.to_datetime(covid19_df['publish_time'], format='%d-%m-%Y')
+    covid19_df = covid19_df.loc[covid19_df['publish_time'] > datetime.strptime(pub_date_cutoff, "%Y-%m-%d")]\
+                           .copy().reset_index(drop=True)
 
     return covid19_df
 
@@ -102,9 +107,9 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                             except KeyError:
                                 pass
 
-                            for j, temp_dict in enumerate(temp_json['body_text'][0]):
-                                text = temp_dict[j]['text']
-                                section = temp_dict[j]['section']
+                            for temp_dict in temp_json['body_text'][0]:
+                                text = temp_dict['text']
+                                section = temp_dict['section']
                                 for key, v in replace_dict.items():
                                     text = text.replace(key, v)
                                     section = section.replace(key, v)
