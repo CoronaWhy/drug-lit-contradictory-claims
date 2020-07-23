@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 import tensorflow as tf
-from contradictory_claims.models.train_model import build_model, regular_encode
+from contradictory_claims.models.train_model import build_model, load_model, regular_encode, save_model
 from transformers import AutoModel, AutoTokenizer, TFAutoModel
 
 
@@ -18,6 +18,9 @@ class TestTrainModel(unittest.TestCase):
     def setUp(self) -> None:
         """Set up for the tests--load tokenizer."""
         self.test_tokenizer = AutoTokenizer.from_pretrained("allenai/biomed_roberta_base")
+        self.model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
+        self.model.resize_token_embeddings(len(self.test_tokenizer))
+        self.out_dir = 'tests/models/test_output'
 
     def test_regular_encode(self):
         """Test that encoding is done properly."""
@@ -29,13 +32,11 @@ class TestTrainModel(unittest.TestCase):
 
         self.assertTrue((encoded_input == expected_encoded_input).all())
 
-    def test_build_model(self):
+    def test_build_save_load_model(self):
         """Test that full model is built properly."""
         strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
-        model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
-        model.resize_token_embeddings(len(self.test_tokenizer))
         os.makedirs("biomed_roberta_base")
-        model.save_pretrained("biomed_roberta_base")
+        self.model.save_pretrained("biomed_roberta_base")
         with strategy.scope():
             model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
             model = build_model(model)
@@ -43,18 +44,25 @@ class TestTrainModel(unittest.TestCase):
 
         self.assertEqual(str(type(model)), "<class 'tensorflow.python.keras.engine.training.Model'>")
 
-    def test_save_model(self):
-        """Test that the model can be saved."""
-        # TODO: Implement something
-        pass
+        save_model(model, timed_dir_name=False, transformer_dir=self.out_dir)
 
-    def test_load_model(self):
-        """Test that the model can be loaded."""
-        # TODO: Implement something
-        pass
+        self.assertTrue(os.path.isfile(os.path.join(self.out_dir, 'sigmoid.pickle')))
+        self.assertTrue(os.path.isfile(os.path.join(self.out_dir, 'config.json')))
+        self.assertTrue(os.path.isfile(os.path.join(self.out_dir, 'tf_model.h5')))
 
+        pickle_path = os.path.join(self.out_dir, 'sigmoid.pickle')
+        model = load_model(pickle_path=pickle_path, transformer_dir=self.out_dir)
+
+        self.assertEqual(str(type(model)), "<class 'tensorflow.python.keras.engine.training.Model'>")
+
+    @unittest.skip("Yeah I don't know how to reasonably test this sorry")
     def test_train_model(self):
         """Test that the model can be trained."""
         # What's a good way to test this?
         # TODO: Implement something
         pass
+
+    def tearDown(self):
+        """Clean-up after all tests have run."""
+        if os.path.isdir(self.out_dir):
+            shutil.rmtree(self.out_dir)
