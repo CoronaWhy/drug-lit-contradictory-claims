@@ -4,7 +4,7 @@
 
 import os
 import unittest
-from datetime import datetime
+# from datetime import datetime
 
 import pandas as pd
 from contradictory_claims.data.preprocess_cord import clean_text, construct_regex_match_pattern,\
@@ -24,12 +24,10 @@ class TestPreprocessCord(unittest.TestCase):
                         "Metadata.csv not found at {}".format(sample_metadata_path))
 
     def test_pub_date_cutoff(self):
-        """Test that publish date cut-off is in the correct format."""
-        self.assertIsInstance(datetime.strptime(pub_date_cutoff, "%Y-%m-%d"), datetime)
-#        try:
-#            datetime.strptime(pub_date_cutoff, "%Y-%m-%d")
-#        except ValueError:
-#            raise ValueError("Incorrect date format, should be YYYY-MM-DD")
+        """Test that incorrect publish date cut-off format throws error."""
+        # self.assertIsInstance(datetime.strptime(pub_date_cutoff, "%Y-%m-%d"), datetime)
+        with self.assertRaises(ValueError):
+            filter_metadata_for_covid19(sample_metadata_path, sample_virus_lex_path, '20191001')
 
     def filter_metadata_for_covid19(self):
         """Test that CORD-19 metadata is filtered properly."""
