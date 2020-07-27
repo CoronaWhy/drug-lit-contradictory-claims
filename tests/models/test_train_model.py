@@ -61,3 +61,8 @@ class TestTrainModel(unittest.TestCase):
         # What's a good way to test this?
         # TODO: Implement something
         pass
+
+    def tearDown(self):
+        """Clean-up after all tests have run."""
+        if os.path.isdir(self.out_dir):
+            shutil.rmtree(self.out_dir)
