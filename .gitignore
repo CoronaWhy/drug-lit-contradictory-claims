@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # Specific to the directory structure of contradictory_claims
-# TODO: Should the directory structure be revisited?
 src/*.egg-info
 input
 .idea
@@ -138,5 +137,6 @@ output
 slurm*
 submit_train.sh
 biobert*
-wandb
+wandb*
 tests/models/test_output/
+LOGFILE

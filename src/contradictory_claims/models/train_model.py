@@ -245,7 +245,7 @@ def train_model(multi_nli_train_x: np.ndarray,
         print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
-    wandb.init()
+    wandb.init(dir="./wandb_artifacts")
 
     # Fine tune on MultiNLI
     train_history = model.fit(multi_nli_train_x,
