@@ -1,4 +1,4 @@
-"""File paths used in testing"""
+"""File paths used in testing."""
 
 
 import os
