@@ -1,1 +1,1 @@
-"""Units tests for contradictory_claims/extract_claims"""
+"""Units tests for contradictory_claims/extract_claims."""
