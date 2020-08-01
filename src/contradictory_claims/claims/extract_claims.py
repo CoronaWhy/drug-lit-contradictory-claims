@@ -11,8 +11,8 @@ from allennlp.predictors import Predictor
 from nltk import sent_tokenize
 from torch.nn import Linear
 
-from .utils import ClaimCrfPredictor
-from .utils import CrfPubmedRCTReader
+from .predictors import ClaimCrfPredictor
+from .dataset_reader import CrfPubmedRCTReader
 from .utils import MODEL_PATH, WEIGHT_PATH
 
 
