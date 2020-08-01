@@ -1,6 +1,6 @@
 """Function to extract Claims."""
 
-
+import nltk
 import numpy as np
 import pandas as pd
 import torch
@@ -15,6 +15,8 @@ from .dataset_reader import CrfPubmedRCTReader
 from .models import DiscourseCrfClassifier  # noqa: F401  # this is the model, which would be loaded
 from .predictors import ClaimCrfPredictor
 from .utils import MODEL_PATH, WEIGHT_PATH
+
+nltk.download('punkt')  # creating issue in travis
 
 
 def load_claim_extraction_model(model_path: str = MODEL_PATH, weight_path: str = WEIGHT_PATH):
