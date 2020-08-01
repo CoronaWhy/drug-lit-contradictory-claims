@@ -4,7 +4,8 @@ import json
 import os
 from typing import Dict, List, Optional
 
-import spacy
+# import spacy
+import en_core_web_sm
 import torch
 from allennlp.common.file_utils import cached_path
 from allennlp.common.util import JsonDict
@@ -14,7 +15,8 @@ from allennlp.data.fields import Field, ListField, SequenceLabelField, TextField
 from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenIndexer
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer
 from allennlp.models.model import Model
-from allennlp.modules import ConditionalRandomField, Seq2VecEncoder, TextFieldEmbedders, TimeDistributed  # noqa:F401
+from allennlp.modules import ConditionalRandomField, Seq2VecEncoder, TimeDistributed
+from allennlp.modules.text_field_embedders import TextFieldEmbedder  # noqa:F401
 from allennlp.nn import InitializerApplicator, RegularizerApplicator  # noqa:F401
 from allennlp.nn import util
 from allennlp.predictors import Predictor
@@ -25,7 +27,8 @@ from torch.nn.modules.linear import Linear
 
 MODEL_PATH = r"https://storage.googleapis.com/contradictory_claims_model_weights/model_crf.tar.gz"
 WEIGHT_PATH = r"https://storage.googleapis.com/contradictory_claims_model_weights/model_crf_tf.th"
-nlp = spacy.load('en_core_web_sm')
+# nlp = spacy.load('en_core_web_sm')
+nlp = en_core_web_sm.load()
 
 
 def read_json(file_path):
@@ -216,7 +219,7 @@ class CrfPubmedRCTReader(DatasetReader):
     Reads a file from Pubmed RCT text file.
     Parameters
     ----------
-    tokenizer : ``Tokenizer``, optional (default=``WordTokenizer()``)
+    tokenizer : ``Tokenizer``, optional
         We use this ``Tokenizer`` for both the premise and the hypothesis.  See :class:`Tokenizer`.
     token_indexers : ``Dict[str, TokenIndexer]``, optional (default=``{"tokens": SingleIdTokenIndexer()}``)
         We similarly use this for both the premise and the hypothesis.  See :class:`TokenIndexer`.

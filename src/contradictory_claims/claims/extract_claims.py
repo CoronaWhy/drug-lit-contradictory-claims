@@ -41,7 +41,7 @@ def load_claim_extraction_model(model_path: str = MODEL_PATH, weight_path: str =
     return model
 
 
-def extract_claims(file_path: str,
+def extract_claims(data: pd.DataFrame(),
                    model_path: str = MODEL_PATH,
                    weight_path: str = WEIGHT_PATH,
                    col_name: str = "sentence"):
@@ -55,13 +55,14 @@ def extract_claims(file_path: str,
     :return: labels, if a sentence is a claim or not
     """
     model = load_claim_extraction_model(model_path, weight_path)
+    # print("MODEL LOADED!!!")  # noqa: T001
     reader = CrfPubmedRCTReader()
     claim_predictor = ClaimCrfPredictor(model, dataset_reader=reader)
 
-    df = pd.read_csv(file_path)
+    df = data
     if col_name not in df.columns:
         return None
-    df_sentence = df[[col_name]]
+    df_sentence = df.copy()
 
     # NOTE(alpha_darklord): The function returns a list of labels, whether a particular
     # sentence is a claim or not (0 or 1), best_paths is used to get this label,
