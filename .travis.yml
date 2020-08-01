@@ -7,13 +7,12 @@ cache: pip
 language: python
 python: "3.8"
 install:
-  # - pip install tox codecov
-  - pip install tox
+  - pip install tox codecov
   - travis_wait mvn install  
 # taking long to build, it now has a wait time of 20 mins before it will stop
 
 script:
   - tox
 after_success:
-  # - tox -e coverage-report
-  # - codecov
+  - tox -e coverage-report
+  - codecov
