@@ -6,9 +6,9 @@ from typing import Dict, List
 from allennlp.common.file_utils import cached_path
 from allennlp.data import Instance
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
+from allennlp.data.fields import Field, ListField, SequenceLabelField, TextField
 from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenIndexer
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer
-from allennlp.data.fields import Field, ListField, SequenceLabelField, TextField
 from overrides import overrides
 
 
