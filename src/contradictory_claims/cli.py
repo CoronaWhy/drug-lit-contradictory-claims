@@ -57,7 +57,7 @@ def main(train, report):
     # Other input paths
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
-   
+
     # Load and preprocess CORD-19 data
     # Extract names of files containing convid-19 synonymns in abstract/title
     # and published after a suitable cut-off date
