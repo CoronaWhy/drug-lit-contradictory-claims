@@ -17,7 +17,7 @@ class TestPreprocessCord(unittest.TestCase):
     def test_find_files(self):
         """Test that input files are found properly."""
         self.assertTrue(os.path.isfile(metadata_path),
-                        "Metadata.csv not found at {}".format(metadata_path))
+                        f"Metadata.csv not found at {metadata_path}")
 
     def test_pub_date_cutoff(self):
         """Test that publish date cut-off is in the correct format."""

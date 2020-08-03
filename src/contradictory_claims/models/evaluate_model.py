@@ -11,6 +11,7 @@ import pandas as pd
 from contradictory_claims.models.train_model import regular_encode
 from sklearn.metrics import accuracy_score, auc, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
+from transformers import AutoTokenizer
 
 
 def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True):
@@ -22,7 +23,6 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     :param drop_na: if True, drop rows containing NAs from resulting DataFrame
     :return: Pandas DataFrame containing data
     """
-
     df = pd.read_excel(data_path, sheet_name=active_sheet)
     if drop_na:
         df = df.dropna().reset_index(drop=True)
@@ -30,13 +30,13 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     return df
 
 
-def make_predictions(df: pd.DataFrame, model, tokenizer, max_len: int = 512 , method: str = "multiclass"):
+def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 512, method: str = "multiclass"):
     """
     Make predictions using trained model and data to predict on.
 
     :param df: Pandas DataFrame containing data to predict on
     :param model: end-to-end trained Transformer model
-    :param tokenizer: tokenizer used to encode data to be predicted on
+    :param model_name: name of model to be loaded by Transformer to get proper tokenizer
     :param max_len: max length of string to be encoded
     :param method: "multiclass" or "binary"--describes setting for prediction outputs
     :return: Pandas DataFrame augmented with predictions made using trained model
@@ -45,21 +45,22 @@ def make_predictions(df: pd.DataFrame, model, tokenizer, max_len: int = 512 , me
     inputs = []
     for i in range(len(df)):
         # NOTE: this expects columns named "text1" and "text2" for the two claims
-        inputs.append(str('[CLS]'+df.loc[i, 'text1']+'[SEP]'+df.loc[i, 'text2']))
+        inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']))
 
     # Then make predictions
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     encoded_inputs = regular_encode(inputs, tokenizer, maxlen=max_len)
     predictions = model.predict(encoded_inputs)
 
     if method == "multiclass":
-        df.predicted_con = predictions[:, 0]
-        df.predicted_ent = predictions[:, 1]
-        df.predicted_neu = predictions[:, 2]
+        df['predicted_con'] = predictions[:, 0]
+        df['predicted_ent'] = predictions[:, 1]
+        df['predicted_neu'] = predictions[:, 2]
         # Calculate predicted class as the max predicted label
-        df.predicted_class = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
-        df.predicted_class.replace(to_replace={'predicted_con':'contradiction',
-                                               'predicted_ent':'entailment',
-                                               'predicted_neu':'neutral'}, inplace=True)
+        df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
+        df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
+                                               'predicted_ent': 'entailment',
+                                               'predicted_neu': 'neutral'}, inplace=True)
     elif method == "binary":
         df.predicted_con = predictions[:, 0]
     else:
@@ -96,8 +97,7 @@ def create_report(df: pd.DataFrame,
                   method: str = "multiclass",
                   include_top_scoring: bool = True,
                   k: int = 10,
-                  plot_rocs:
-                  bool = True,
+                  plot_rocs: bool = True,
                   round_num: int = 3):
     """
     Generate a report with the results of the predictions and various evaluation metrics.
@@ -111,7 +111,6 @@ def create_report(df: pd.DataFrame,
     :param k: number of top-scoring contradictory claims to include in the report
     :param plot_rocs: if True, plot ROCs of performance
     :param round_num: number of decimal places to round to
-    :return: ????
     """
     with open(out_report_file, 'w') as out_file:
 
@@ -165,7 +164,8 @@ def create_report(df: pd.DataFrame,
             df_top_ent = df.sort_values(by='predicted_ent', ascending=False).head(k)
             for i in range(k):
                 pair_i = df_top_ent.iloc[i]
-                print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_ent)
+                formatted_pair = print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_ent)
+                out_file.write(formatted_pair)
             out_file.write("\n\n")
 
             out_file.write(f"The top {k} most neutral pairs are as follows:\n")
@@ -173,18 +173,19 @@ def create_report(df: pd.DataFrame,
             df_top_neu = df.sort_values(by='predicted_neu', ascending=False).head(k)
             for i in range(k):
                 pair_i = df_top_neu.iloc[i]
-                print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_neu)
+                formatted_pair = print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_neu)
+                out_file.write(formatted_pair)
             out_file.write("\n\n")
 
     if plot_rocs:
         n_classes = 3
         binarized_annotations = label_binarize(df.annotation, classes=["contradiction", "entailment", "neutral"])
-        predicted_annotations = df[['predicted_con', 'predicted_ent', 'predicted_neu']]
+        predicted_annotations = np.array(df[['predicted_con', 'predicted_ent', 'predicted_neu']])
 
         # Compute ROC curve and ROC area for each class
-        fpr = dict()
-        tpr = dict()
-        roc_auc = dict()
+        fpr = {}
+        tpr = {}
+        roc_auc = {}
         for i in range(n_classes):
             fpr[i], tpr[i], _ = roc_curve(binarized_annotations[:, i], predicted_annotations[:, i])
             roc_auc[i] = auc(fpr[i], tpr[i])
@@ -196,11 +197,9 @@ def create_report(df: pd.DataFrame,
         # Plot ROC curve
         plt.figure()
         plt.plot(fpr["micro"], tpr["micro"],
-                 label='micro-average ROC curve (area = {0:0.2f})'
-                       ''.format(roc_auc["micro"]))
+                 label=f'micro-average ROC curve (area = {roc_auc["micro"]:0.{round_num}f})')
         for i in range(n_classes):
-            plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
-                                           ''.format(i, roc_auc[i]))
+            plt.plot(fpr[i], tpr[i], label=f'ROC curve of class {i} (area = {roc_auc[i]:0.{round_num}f})')
 
         now = datetime.datetime.now()
         plot_path = os.path.join(out_plot_dir, f"{model_id}_{now.month}-{now.day}-{now.year}.png")
@@ -212,5 +211,3 @@ def create_report(df: pd.DataFrame,
         plt.title('Some extension of Receiver operating characteristic to multi-class')
         plt.legend(loc="lower right")
         plt.savefig(plot_path)
-
-    return None
