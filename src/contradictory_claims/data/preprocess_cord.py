@@ -12,6 +12,32 @@ import pandas as pd
 from pandas.io.json import json_normalize
 
 
+def construct_regex_match_pattern(search_terms: List[str], search_type: str = 'fuzzy'):
+    """
+    Construct regex search pattern for the specified terms.
+
+    :param terms_dict: list of search terms
+    :param search_type: "exact" vs "flank_white_space" vs "fuzzy" pattern
+    :return: Regex search pattern
+    """
+    if search_type == 'exact':
+        exact_pattern = '|'.join([i.lower() for i in search_terms])
+
+        return exact_pattern
+
+    elif search_type == 'flank_white_space':
+        exact_pattern = '\W' + '\W|\W'.join([i.lower() for i in search_terms]) + '\W'  # noqa: W605
+
+        return exact_pattern
+
+    else:
+        # TODO: fix flake8 error code FS001
+        fuzzy_terms = ['.*%s.*' % i.lower() for i in search_terms]  # noqa: FS001
+        fuzzy_pattern = '|'.join(fuzzy_terms)
+
+        return fuzzy_pattern
+
+
 def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_date_cutoff: str = None):
     """
     Filter metadata to publications containing a COVID-19 synonym in title or abstract and published after cut-off date.
@@ -35,7 +61,7 @@ def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_dat
     # Load file with COVID-19 lexicon (1 per line) and generate a search pattern
     with open(virus_lex_path) as f:
         covid_19_terms = f.read().splitlines()
-        covid_19_term_pattern = '|'.join([i.lower() for i in covid_19_terms])
+        covid_19_term_pattern = construct_regex_match_pattern(covid_19_terms, 'exact')
 
     covid19_df = metadata_df.loc[metadata_df.title_abstract.str.contains(covid_19_term_pattern)]\
                             .copy().reset_index(drop=True)
@@ -138,27 +164,6 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
     return pd.DataFrame.from_dict(covid19_dict, orient='index')
 
 
-def construct_regex_match_pattern(search_terms: List[str], search_type: str = 'fuzzy'):
-    """
-    Construct regex search pattern for the specified terms.
-
-    :param terms_dict: list of search terms
-    :param search_type: exact vs fuzzy pattern
-    :return: Regex search pattern
-    """
-    if search_type == 'exact':
-        exact_pattern = '|'.join(search_terms)
-
-        return exact_pattern
-
-    else:
-        # TODO: fix flake8 error code FS001
-        fuzzy_terms = ['.*%s.*' % i for i in search_terms]  # noqa: FS001
-        fuzzy_pattern = '|'.join(fuzzy_terms)
-
-        return fuzzy_pattern
-
-
 def extract_regex_pattern(section_list: List[str], pattern: str):
     """
     Extract list of section names that match the specified regex pattern.
@@ -174,12 +179,12 @@ def extract_regex_pattern(section_list: List[str], pattern: str):
     return extracted_list
 
 
-def clean_text(input_data):
+def clean_text(input_data: pd.DataFrame):
     """
     Filter text to keep only sentences containing at least 3 meaningful words.
 
     :param input_data: pandas dataframe with publication text
-    :return: clean dataframe
+    :return: Clean dataframe
     """
     # List of words-to-ignore
     rep = {"text": "", "cite_spans": "", "ref_spans": "", "section": "", "abstract": "",
@@ -199,3 +204,45 @@ def clean_text(input_data):
     input_processed = input_data.loc[sentences_to_keep, :]
 
     return input_processed
+
+
+def merge_section_text(input_data: pd.DataFrame):
+    """
+    Merge all sentences belonging to each section of each paper into contiguous text passages.
+
+    :param input_data: pandas dataframe with publication text
+    :return: Dataframe with merged section text
+    """
+    # Merge all sentences belonging to each section of each paper into contiguous text passages
+    merged_df = input_data.groupby(['cord_uid', 'section'], as_index=False).agg({'sentence': ' '.join})
+    # Convert text to lower case
+    merged_df.loc[:, 'sentence'] = merged_df.loc[:, 'sentence'].str.lower()
+    # Rename column
+    merged_df = merged_df.rename(columns={'sentence': 'text'})
+
+    return merged_df
+
+
+def filter_section_with_drugs(input_data: pd.DataFrame, drug_terms: List[str], drug_terms_pattern: str):
+    """
+    Filter to sections where section text contains drug terms.
+
+    :param input_data: pandas dataframe with publication text
+    :param drug_terms: list of drug terms to search for
+    :param drug_terms_pattern: drug terms regex pattern to search for
+    :return: Dataframe with sections containing drug terms
+    """
+    # Filter to sections where section text contains drug terms
+    contain_drug_mask = input_data['text'].str.contains(drug_terms_pattern, case=False)
+    drugs_section_df = input_data[contain_drug_mask]
+
+    # Add a new column for storing the drug term matches
+    drugs_section_df['drug_terms_used'] = ''
+
+    # Flank drug terms with white space for accurate match
+    drug_terms = [' ' + d + ' ' for d in drug_terms]
+
+    # Populate the drug term matches column
+    for index, row in drugs_section_df.iterrows():
+        drugs_used = [drug for drug in drug_terms if drug in row.text]
+        drugs_section_df.at[index, 'drug_terms_used'] = ','.join(drugs_used)

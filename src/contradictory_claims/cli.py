@@ -10,7 +10,7 @@ import click
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
-    extract_regex_pattern, filter_metadata_for_covid19
+    extract_regex_pattern, filter_metadata_for_covid19, filter_section_with_drugs, merge_section_text
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -92,7 +92,23 @@ def main(train, report):
     covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
 
     # Clean the text to keep only meaningful sentences
-    covid19_clean_df = clean_text(covid19_filt_section_df)  # noqa: F841
+    # and merge sentences belonging to each section of each paper into contiguous text passages
+    covid19_clean_df = clean_text(covid19_filt_section_df)
+
+    # Merge all sentences belonging to each section of each paper into contiguous text passages
+    covid19_merged_df = merge_section_text(covid19_clean_df)
+
+    # Construct regex match pattern for drug terms
+    # Flank drug terms with white space for accurate match
+    with open(drug_lex_path) as f:
+        drug_terms = f.read().splitlines()
+    drug_terms_pattern = construct_regex_match_pattern(drug_terms, 'flank_white_space')
+
+    # Filter to sections where section text contains drug terms
+    covid19_drugs_section_df = filter_section_with_drugs(covid19_merged_df,  # noqa: F841
+                                                         drug_terms, drug_terms_pattern)
+
+    # TODO: Claim Exraction code
 
     if train:
         # Load BERT train and test data

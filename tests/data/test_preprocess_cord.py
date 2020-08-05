@@ -9,6 +9,7 @@ import unittest
 import pandas as pd
 from contradictory_claims.data.preprocess_cord import clean_text, construct_regex_match_pattern,\
     extract_json_to_dataframe, extract_regex_pattern, filter_metadata_for_covid19
+#    filter_section_with_drugs, merge_section_text
 
 from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
     sample_covid19_df_path, sample_json_temp_path, sample_json_text_file_dir,\
@@ -62,3 +63,11 @@ class TestPreprocessCord(unittest.TestCase):
         covid19_df = pd.read_csv(sample_covid19_df_path)
         clean_df = clean_text(covid19_df)
         self.assertEqual(len(clean_df), 7)
+
+    def test_merge_section_text(self):
+        """Test that section text is merged properly."""
+        pass
+
+    def test_filter_section_with_drugs(self):
+        """Test that section filtering for drugs is performed properly."""
+        pass
