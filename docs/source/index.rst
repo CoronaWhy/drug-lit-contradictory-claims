@@ -13,6 +13,7 @@ Welcome to contradictory-claims's documentation!
 
    make_dataset
    train_model
+   evaluate_model
    cli
 
 .. Indices and tables
