@@ -20,24 +20,24 @@ class TestMakeDataset(unittest.TestCase):
     def test_find_files(self):
         """Test that input files are found properly."""
         self.assertTrue(os.path.isfile(multinli_train_path),
-                        "MultiNLI training data not found at {}".format(multinli_train_path))
+                        f"MultiNLI training data not found at {multinli_train_path}")
         self.assertTrue(os.path.isfile(multinli_test_path),
-                        "MultiNLI test data not found at {}".format(multinli_test_path))
+                        f"MultiNLI test data not found at {multinli_test_path}")
 
         self.assertTrue(os.path.isfile(mednli_train_path),
-                        "MedNLI training data not found at {}".format(mednli_train_path))
+                        f"MedNLI training data not found at {mednli_train_path}")
         self.assertTrue(os.path.isfile(mednli_dev_path),
-                        "MedNLI dev set data not found at {}".format(mednli_dev_path))
+                        f"MedNLI dev set data not found at {mednli_dev_path}")
         self.assertTrue(os.path.isfile(mednli_test_path),
-                        "MedNLI test data not found at {}".format(mednli_test_path))
+                        f"MedNLI test data not found at {mednli_test_path}")
 
         self.assertTrue(os.path.isfile(mancon_sent_pairs),
-                        "ManConCorpus sentence pairs training data not found at {}".format(mancon_sent_pairs))
+                        f"ManConCorpus sentence pairs training data not found at {mancon_sent_pairs}")
 
         self.assertTrue(os.path.isfile(drug_lex_path),
-                        "Drug lexicon not found at {}".format(drug_lex_path))
+                        f"Drug lexicon not found at {drug_lex_path}")
         self.assertTrue(os.path.isfile(virus_lex_path),
-                        "Virus lexicon not found at {}".format(virus_lex_path))
+                        f"Virus lexicon not found at {virus_lex_path}")
 
     @unittest.skip("This test can be used locally to check that MultiNLI loads properly")
     def test_load_multi_nli(self):

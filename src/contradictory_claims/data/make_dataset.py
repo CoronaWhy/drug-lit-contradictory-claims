@@ -78,8 +78,7 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
 
     # Number of training pairs per class to use. If None, use all training pairs
     if num_training_pairs_per_class is not None:
-        print('Using only a subset of MedNLI for training: {} training pairs per class'  # noqa: T001
-              .format(num_training_pairs_per_class))  # noqa: T001
+        print(f'Using only a subset of MedNLI for training: {num_training_pairs_per_class} training pairs per class')  # noqa: T001,E501
         temp = mednli_data[mednli_data.gold_label == 2].head(num_training_pairs_per_class).append(
             mednli_data[mednli_data.gold_label == 1].head(num_training_pairs_per_class)).reset_index(drop=True)
         mednli_data = temp.append(mednli_data[mednli_data.gold_label == 0].head(num_training_pairs_per_class))\
@@ -109,9 +108,9 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str):  # noqa: D20
     mancon_data = pd.read_csv(mancon_sent_pair_path, sep='\t')
     mancon_data['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
                             label in mancon_data.label]
-    print("Number of contradiction pairs: {}".format(len(mancon_data[mancon_data.label == 2])))  # noqa: T001
-    print("Number of entailment pairs: {}".format(len(mancon_data[mancon_data.label == 1])))  # noqa: T001
-    print("Number of neutral pairs: {}".format(len(mancon_data[mancon_data.label == 0])))  # noqa: T001
+    print(f"Number of contradiction pairs: {len(mancon_data[mancon_data.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(mancon_data[mancon_data.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(mancon_data[mancon_data.label == 0])}")  # noqa: T001
 
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train, y_test = train_test_split(
@@ -137,7 +136,7 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     drug_names = pd.read_csv(drug_lex_path, header=None)
     drug_names = list(drug_names[0])
     drug_names = [drug.lower() for drug in drug_names]
-    print('{} unique drugs found in training & testing corpus:'.format(len(drug_names)))  # noqa: T001
+    print(f"{len(drug_names)} unique drugs found in training & testing corpus:")  # noqa: T001
 
     virus_names = pd.read_csv(virus_lex_path, header=None)
     virus_names = list(virus_names[0])
