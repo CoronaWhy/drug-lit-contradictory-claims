@@ -11,6 +11,8 @@ from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
     extract_regex_pattern, filter_metadata_for_covid19, filter_section_with_drugs, merge_section_text
+from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
+    tokenize_section_text
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -102,13 +104,38 @@ def main(train, report):
     # Flank drug terms with white space for accurate match
     with open(drug_lex_path) as f:
         drug_terms = f.read().splitlines()
+    drug_terms.append('acei/arb')  # TODO: Add this to the main lexicon file
     drug_terms_pattern = construct_regex_match_pattern(drug_terms, 'flank_white_space')
 
     # Filter to sections where section text contains drug terms
     covid19_drugs_section_df = filter_section_with_drugs(covid19_merged_df,  # noqa: F841
                                                          drug_terms, drug_terms_pattern)
 
-    # TODO: Claim Exraction code
+    # TODO: Replace with claim extraction code
+    claims_df = covid19_drugs_section_df
+
+    # Separate papers with at least 1 claim from those with no claims
+    no_claims_cord_uid = set(claims_df.loc[claims_df.claim_flag == 0, 'cord_uid'])\
+        - set(claims_df.loc[claims_df.claim_flag == 1, 'cord_uid'])
+    claims_data = claims_df.loc[claims_df.claim_flag == 1, :].copy().reset_index(drop=True)
+    no_claims_data = claims_df.loc[claims_df.cord_uid.isin(no_claims_cord_uid), :]\
+                              .copy().reset_index(drop=True)
+
+    # For papers with no claims, tokenize section text to sentences
+    # and append to claims
+    # This is because when no claims are identified, we want to consider all sentences
+    # rather than ignoring the paper altogether
+    no_claims_data = tokenize_section_text(no_claims_data)
+    claims_data = claims_data.append(no_claims_data).reset_index(drop=True)
+
+    # Initialize scispacy nlp object and add virus terms to the vocabulary
+    nlp = initialize_nlp(virus_lex_path)
+
+    # Pair similar claims
+    claims_paired_df = pair_similar_claims(claims_data, nlp)
+
+    # Add paper publish time and title info
+    claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
     if train:
         # Load BERT train and test data

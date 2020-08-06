@@ -1,4 +1,4 @@
-"""Function for preprocessing cord-19 dataset."""
+"""Functions for preprocessing cord-19 dataset."""
 
 # -*- coding: utf-8 -*-
 
@@ -232,6 +232,12 @@ def filter_section_with_drugs(input_data: pd.DataFrame, drug_terms: List[str], d
     :param drug_terms_pattern: drug terms regex pattern to search for
     :return: Dataframe with sections containing drug terms
     """
+    # Replace drug name short forms with full forms
+    drug_replace_dict = {'hcq': 'hydroxychloroquine', ' cq ': 'chloroquine', ' azt ': 'azithromycin',
+                         ' azi ': 'azithromycin', ' az ': 'azithromycin'}
+    for key, value in drug_replace_dict.items():
+        input_data['text'] = [t.lower().replace(key, value) for t in input_data.text]
+
     # Filter to sections where section text contains drug terms
     contain_drug_mask = input_data['text'].str.contains(drug_terms_pattern, case=False)
     drugs_section_df = input_data[contain_drug_mask]

@@ -1,4 +1,4 @@
-"""Tests for making datasets for contradictory-claims."""
+"""Tests for preprocessing CORD-19 data."""
 
 # -*- coding: utf-8 -*-
 
