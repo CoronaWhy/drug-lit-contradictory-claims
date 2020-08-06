@@ -79,11 +79,11 @@ def save_model(model, timed_dir_name: bool = True, transformer_dir: str = 'outpu
     :param model: end-to-end Transformer model
     :param timed_dir_name: if True, save model to a directory where date is recorded
     :param transformer_dir: directory to save model
-    :return:
+    :return: None
     """
     if timed_dir_name:
         now = datetime.datetime.now()
-        transformer_dir = os.path.join(transformer_dir, "{}-{}-{}".format(now.month, now.day, now.year))
+        transformer_dir = os.path.join(transformer_dir, f"{now.month}-{now.day}-{now.year}")
 
     if not os.path.exists(transformer_dir):
         os.makedirs(transformer_dir)
@@ -240,12 +240,12 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     print("Okay now it's training time.......\n\n\n")  # noqa: T001
     if tf.test.gpu_device_name():
-        print('Default GPU Device:{}'.format(tf.test.gpu_device_name()))  # noqa: T001
+        print(f'Default GPU Device:{tf.test.gpu_device_name()}')  # noqa: T001
     else:
         print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
-    wandb.init()
+    wandb.init(dir="./wandb_artifacts")
 
     # Fine tune on MultiNLI
     train_history = model.fit(multi_nli_train_x,
