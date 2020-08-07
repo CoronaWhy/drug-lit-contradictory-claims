@@ -11,8 +11,9 @@ from allennlp.predictors import Predictor
 from nltk import sent_tokenize
 from torch.nn import Linear
 
-from .predictors import ClaimCrfPredictor
 from .dataset_reader import CrfPubmedRCTReader
+from .predictors import ClaimCrfPredictor
+from .models import DiscourseCrfClassifier  # noqa:F401
 from .utils import MODEL_PATH, WEIGHT_PATH
 
 
