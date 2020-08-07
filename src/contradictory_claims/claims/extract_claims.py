@@ -1,6 +1,7 @@
 """Function to extract Claims."""
 
 
+import nltk
 import numpy as np
 import pandas as pd
 import torch
@@ -15,6 +16,8 @@ from .dataset_reader import CrfPubmedRCTReader
 from .predictors import ClaimCrfPredictor
 from .models import DiscourseCrfClassifier  # noqa:F401
 from .utils import MODEL_PATH, WEIGHT_PATH
+
+nltk.download('punkt')
 
 
 def load_claim_extraction_model(model_path: str = MODEL_PATH, weight_path: str = WEIGHT_PATH):

@@ -4,7 +4,8 @@
 import unittest
 
 import pandas as pd
-from contradictory_claims.claims.extract_claims import extract_claims, load_claim_extraction_model
+from contradictory_claims.claims import extract_claims
+# from extract_claims import extract_claims, load_claim_extraction_model
 
 from .constants import MODEL_PATH, WEIGHT_PATH
 
@@ -14,7 +15,7 @@ class TestExtractClaims(unittest.TestCase):
 
     def test_load_claim_extraction_model(self) -> None:
         """Loads the model to extract claims."""
-        self.model = load_claim_extraction_model(model_path=MODEL_PATH, weight_path=WEIGHT_PATH)
+        self.model = extract_claims.load_claim_extraction_model(model_path=MODEL_PATH, weight_path=WEIGHT_PATH)
         self.assertIsNotNone(self.model)
 
     def test_extract_claims(self):
@@ -81,7 +82,7 @@ class TestExtractClaims(unittest.TestCase):
                       "the kidney (b), ace2 shows prominent apical staining in the epithelial cells of the "
                       "proximal convoluted tubules (arrows) and bowman´s capsule epithelium (arrowheads)."
                       ), "remdesivir inhibits renal fibrosis in obstructed kidneys"]})
-        df_final = extract_claims(df_test, col_name="text")
+        df_final = extract_claims.extract_claims(df_test, col_name="text")
         self.assertIsNotNone(df_final)
         self.assertTrue("claims" in df_final.columns)
         self.assertGreaterEqual(df_final['claim_flag'].sum(), 1)  # check if any semtemce has a claim_flag found
