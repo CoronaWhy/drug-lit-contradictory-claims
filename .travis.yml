@@ -7,6 +7,7 @@ cache: pip
 language: python
 python: "3.8"
 install:
+  - pip install -U pip wheel
   - pip install tox codecov
 script:
   - tox
