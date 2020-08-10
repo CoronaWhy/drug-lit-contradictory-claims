@@ -19,3 +19,4 @@ exclude .flake8
 exclude tox.ini
 include *.rst *.txt LICENSE
 exclude notebooks/*
+include tests/data/resources/cord19/extracted/document_parses/*

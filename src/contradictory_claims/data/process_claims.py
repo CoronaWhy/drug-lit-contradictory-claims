@@ -25,7 +25,8 @@ def initialize_nlp(virus_lex_path: str):
     """
     # Load the scispacy large model
     # nlp = en_core_sci_lg.load(disable='parser')
-    nlp = spacy.load("en_core_sci_lg")  # I believe this should work, I wonder if it's not recommended for memory reasons though in a virtual environment like Travis...
+    # I believe this should work, I wonder if it's not recommended for  memory reasons though in a v env like Travis...
+    nlp = spacy.load("en_core_sci_lg")
     # Enable umls entity detection and abbreviation detection
     linker = UmlsEntityLinker(resolve_abbreviations=True)
     nlp.add_pipe(linker)
@@ -50,7 +51,7 @@ def initialize_nlp(virus_lex_path: str):
     return nlp
 
 
-def tokenize_section_text(input_data: pd.Dataframe):
+def tokenize_section_text(input_data: pd.DataFrame):
     """
     Tokenize section text to sentences.
 
@@ -75,7 +76,7 @@ def tokenize_section_text(input_data: pd.Dataframe):
     return pd.DataFrame.from_dict(text_dict, "index")
 
 
-def pair_similar_claims(claims_data: pd.DataFrame, nlp: spacy.lang.en.English):
+def pair_similar_claims(claims_data: pd.DataFrame, nlp):
     """
     Pair similar claims.
 
