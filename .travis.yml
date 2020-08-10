@@ -10,7 +10,7 @@ install:
   - pip install -U pip wheel
   - pip install tox codecov
 script:
-  - tox
+  - tox -r
 after_success:
   - tox -e coverage-report
   - codecov
