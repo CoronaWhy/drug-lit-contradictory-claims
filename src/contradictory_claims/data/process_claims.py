@@ -4,7 +4,7 @@
 
 from itertools import combinations
 
-#import en_core_sci_lg
+# import en_core_sci_lg
 import pandas as pd
 import spacy
 from nltk import sent_tokenize
