@@ -182,7 +182,7 @@ def extract_regex_pattern(section_list: List[str], pattern: str):
     return extracted_list
 
 
-def extract_section_from_text(conc_search_terms_path: str, covid19_df: pd.Dataframe):
+def extract_section_from_text(conc_search_terms_path: str, covid19_df: pd.DataFrame):
     """
     Extract title, abstract, and conclusion sections from publication text.
 

@@ -51,7 +51,7 @@ def initialize_nlp(virus_lex_path: str):
     return nlp
 
 
-def split_papers_on_claim_presence(claims_df: pd.Dataframe):
+def split_papers_on_claim_presence(claims_df: pd.DataFrame):
     """
     Separate papers with at least 1 claim from those with no claims.
 
@@ -67,7 +67,7 @@ def split_papers_on_claim_presence(claims_df: pd.Dataframe):
     return claims_data, no_claims_data
 
 
-def tokenize_section_text(input_data: pd.Dataframe):
+def tokenize_section_text(input_data: pd.DataFrame):
     """
     Tokenize section text to sentences.
 
