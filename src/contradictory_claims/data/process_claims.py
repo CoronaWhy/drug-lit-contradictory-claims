@@ -90,7 +90,6 @@ def tokenize_section_text(input_data: pd.Dataframe):
     return pd.DataFrame.from_dict(text_dict, "index")
 
 
-def pair_similar_claims(claims_data: pd.DataFrame, nlp: spacy.lang.en.English):
     """
     Pair similar claims.
 
