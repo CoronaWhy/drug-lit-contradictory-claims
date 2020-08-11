@@ -49,6 +49,22 @@ def initialize_nlp(virus_lex_path: str):
     return nlp
 
 
+def split_papers_on_claim_presence(claims_df: pd.Dataframe):
+    """
+    Separate papers with at least 1 claim from those with no claims.
+
+    :param claims_df: pandas dataframe of publication text, with a flag indicating claim presence
+    :return: Separate dataframes for claim text and text for papers with no claims
+    """
+    no_claims_cord_uid = set(claims_df.loc[claims_df.claim_flag == 0, 'cord_uid'])\
+        - set(claims_df.loc[claims_df.claim_flag == 1, 'cord_uid'])
+    claims_data = claims_df.loc[claims_df.claim_flag == 1, :].copy().reset_index(drop=True)
+    no_claims_data = claims_df.loc[claims_df.cord_uid.isin(no_claims_cord_uid), :]\
+                              .copy().reset_index(drop=True)
+
+    return claims_data, no_claims_data
+
+
 def tokenize_section_text(input_data: pd.Dataframe):
     """
     Tokenize section text to sentences.

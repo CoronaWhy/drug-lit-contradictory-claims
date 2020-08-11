@@ -9,10 +9,11 @@ import click
 
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
-from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
-    extract_regex_pattern, filter_metadata_for_covid19, filter_section_with_drugs, merge_section_text
+from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
+    extract_section_from_text, filter_metadata_for_covid19,\
+    filter_section_with_drugs, merge_section_text
 from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
-    tokenize_section_text
+    split_papers_on_claim_presence, tokenize_section_text
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -59,6 +60,7 @@ def main(train, report):
     # Other input paths
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
+    conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
 
     # Load and preprocess CORD-19 data
     # Extract names of files containing convid-19 synonymns in abstract/title
@@ -71,27 +73,8 @@ def main(train, report):
     covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,
                                            pdf_filenames, pmc_filenames)
 
-    # Construct regex match pattern for putative conclusion section headers
-    search_terms = ['conclusion',
-                    'discussion',
-                    'interpretation',
-                    'added value of this study',
-                    'research in context',
-                    'concluding',
-                    'closing remarks',
-                    'summary of findings',
-                    'outcome']
-    search_pattern = construct_regex_match_pattern(search_terms)
-
-    # Extract section headers for title\abstract\conclusion sections
-    unique_sections = set(covid19_df.section.tolist())
-    section_list = extract_regex_pattern(unique_sections, search_pattern)
-    section_list = [i.lower() for i in section_list]
-    section_list.append('abstract')
-    section_list.append('title')
-
     # Extract title\abstract\conclusion sections from publication text
-    covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
+    covid19_filt_section_df = extract_section_from_text(conc_search_terms_path, covid19_df)
 
     # Clean the text to keep only meaningful sentences
     # and merge sentences belonging to each section of each paper into contiguous text passages
@@ -100,26 +83,15 @@ def main(train, report):
     # Merge all sentences belonging to each section of each paper into contiguous text passages
     covid19_merged_df = merge_section_text(covid19_clean_df)
 
-    # Construct regex match pattern for drug terms
-    # Flank drug terms with white space for accurate match
-    with open(drug_lex_path) as f:
-        drug_terms = f.read().splitlines()
-    drug_terms.append('acei/arb')  # TODO: Add this to the main lexicon file
-    drug_terms_pattern = construct_regex_match_pattern(drug_terms, 'flank_white_space')
-
     # Filter to sections where section text contains drug terms
     covid19_drugs_section_df = filter_section_with_drugs(covid19_merged_df,  # noqa: F841
-                                                         drug_terms, drug_terms_pattern)
+                                                         drug_lex_path)
 
     # TODO: Replace with claim extraction code
     claims_df = covid19_drugs_section_df
 
     # Separate papers with at least 1 claim from those with no claims
-    no_claims_cord_uid = set(claims_df.loc[claims_df.claim_flag == 0, 'cord_uid'])\
-        - set(claims_df.loc[claims_df.claim_flag == 1, 'cord_uid'])
-    claims_data = claims_df.loc[claims_df.claim_flag == 1, :].copy().reset_index(drop=True)
-    no_claims_data = claims_df.loc[claims_df.cord_uid.isin(no_claims_cord_uid), :]\
-                              .copy().reset_index(drop=True)
+    claims_data, no_claims_data = split_papers_on_claim_presence(claims_df)
 
     # For papers with no claims, tokenize section text to sentences
     # and append to claims

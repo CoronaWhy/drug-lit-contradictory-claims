@@ -12,14 +12,17 @@ import pandas as pd
 from pandas.io.json import json_normalize
 
 
-def construct_regex_match_pattern(search_terms: List[str], search_type: str = 'fuzzy'):
+def construct_regex_match_pattern(search_terms_file_path: str, search_type: str = 'fuzzy'):
     """
     Construct regex search pattern for the specified terms.
 
-    :param terms_dict: list of search terms
+    :param terms_dict: file path for list of search terms
     :param search_type: "exact" vs "flank_white_space" vs "fuzzy" pattern
     :return: Regex search pattern
     """
+    with open(search_terms_file_path) as f:
+        search_terms = f.read().splitlines()
+
     if search_type == 'exact':
         exact_pattern = '|'.join([i.lower() for i in search_terms])
 
@@ -179,6 +182,30 @@ def extract_regex_pattern(section_list: List[str], pattern: str):
     return extracted_list
 
 
+def extract_section_from_text(conc_search_terms_path: str, covid19_df: pd.Dataframe):
+    """
+    Extract title, abstract, and conclusion sections from publication text.
+
+    :param conc_search_terms_path: file path for search terms for putative conclusion section headers
+    :param covid19_df: pandas dataframe of publication text
+    :return: dataframe of title, abstract, and conclusion section text
+    """
+    # Construct regex match pattern for putative conclusion section headers
+    search_pattern = construct_regex_match_pattern(conc_search_terms_path)
+
+    # Extract section headers for title\abstract\conclusion sections
+    unique_sections = set(covid19_df.section.tolist())
+    section_list = extract_regex_pattern(unique_sections, search_pattern)
+    section_list = [i.lower() for i in section_list]
+    section_list.append('abstract')
+    section_list.append('title')
+
+    # Extract title\abstract\conclusion sections from publication text
+    covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
+
+    return covid19_filt_section_df
+
+
 def clean_text(input_data: pd.DataFrame):
     """
     Filter text to keep only sentences containing at least 3 meaningful words.
@@ -223,15 +250,18 @@ def merge_section_text(input_data: pd.DataFrame):
     return merged_df
 
 
-def filter_section_with_drugs(input_data: pd.DataFrame, drug_terms: List[str], drug_terms_pattern: str):
+def filter_section_with_drugs(input_data: pd.DataFrame, drug_lex_path: str):
     """
     Filter to sections where section text contains drug terms.
 
     :param input_data: pandas dataframe with publication text
-    :param drug_terms: list of drug terms to search for
-    :param drug_terms_pattern: drug terms regex pattern to search for
+    :param drug_lex_path: file path for list of drug terms to search for
     :return: Dataframe with sections containing drug terms
     """
+    # Construct regex match pattern for drug terms
+    # Flank drug terms with white space for accurate match
+    drug_terms_pattern = construct_regex_match_pattern(drug_lex_path, 'flank_white_space')
+
     # Replace drug name short forms with full forms
     drug_replace_dict = {'hcq': 'hydroxychloroquine', ' cq ': 'chloroquine', ' azt ': 'azithromycin',
                          ' azi ': 'azithromycin', ' az ': 'azithromycin'}
@@ -246,6 +276,8 @@ def filter_section_with_drugs(input_data: pd.DataFrame, drug_terms: List[str], d
     drugs_section_df['drug_terms_used'] = ''
 
     # Flank drug terms with white space for accurate match
+    with open(drug_lex_path) as f:
+        drug_terms = f.read().splitlines()
     drug_terms = [' ' + d + ' ' for d in drug_terms]
 
     # Populate the drug term matches column
