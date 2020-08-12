@@ -62,9 +62,7 @@ def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_dat
     metadata_df.loc[:, 'title_abstract'] = metadata_df.loc[:, 'title_abstract'].fillna('')
 
     # Load file with COVID-19 lexicon (1 per line) and generate a search pattern
-    with open(virus_lex_path) as f:
-        covid_19_terms = f.read().splitlines()
-        covid_19_term_pattern = construct_regex_match_pattern(covid_19_terms, 'exact')
+    covid_19_term_pattern = construct_regex_match_pattern(virus_lex_path, 'exact')
 
     covid19_df = metadata_df.loc[metadata_df.title_abstract.str.contains(covid_19_term_pattern)]\
                             .copy().reset_index(drop=True)

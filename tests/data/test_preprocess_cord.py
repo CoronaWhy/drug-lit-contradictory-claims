@@ -12,8 +12,8 @@ from contradictory_claims.data.preprocess_cord import clean_text, construct_rege
 #    filter_section_with_drugs, merge_section_text
 
 from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
-    sample_covid19_df_path, sample_json_temp_path, sample_json_text_file_dir,\
-    sample_metadata_path, sample_virus_lex_path
+    sample_conclusion_search_terms_path, sample_covid19_df_path, sample_json_temp_path,\
+    sample_json_text_file_dir, sample_metadata_path, sample_virus_lex_path
 
 
 class TestPreprocessCord(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestPreprocessCord(unittest.TestCase):
 
     def test_construct_regex_match_pattern(self):
         """Test that regex pattern is constrcuted properly."""
-        regex_pattern = construct_regex_match_pattern(['conclusion', 'discussion'])
+        regex_pattern = construct_regex_match_pattern(sample_conclusion_search_terms_path)
         self.assertEqual(regex_pattern, '.*conclusion.*|.*discussion.*')
 
     def test_extract_regex_pattern(self):
