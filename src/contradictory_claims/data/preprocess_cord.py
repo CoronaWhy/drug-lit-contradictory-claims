@@ -9,7 +9,7 @@ from typing import List
 from zipfile import ZipFile
 
 import pandas as pd
-from pandas.io.json import json_normalize
+# from pandas.io.json import json_normalize
 
 
 def filter_metadata_for_covid19(metadata_path: str, virus_lex_path: str, pub_date_cutoff: str = None):

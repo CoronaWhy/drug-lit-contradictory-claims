@@ -24,12 +24,12 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     :return: Pandas DataFrame containing data
     """
     df = pd.read_excel(data_path, sheet_name=active_sheet)
-    print(f"LENGTH OF DF: {len(df)}")
+    print(f"LENGTH OF DF: {len(df)}")  # noqa: T001
     # DELETE ME:
     drop_na = False
     if drop_na:
         df = df.dropna().reset_index(drop=True)
-        print(f"DROPPED NAs NOW LEN OF DF: {len(df)}")
+        print(f"DROPPED NAs NOW LEN OF DF: {len(df)}")  # noqa: T001
 
     return df
 
@@ -96,9 +96,9 @@ def print_pair(claim1: str, claim2: str, score: float, round_num: int = 3):
     return out
 
 
-def print_pair_2(claim1: str, claim2: str, true_label: str, predicted_label: str,  score: float, round_num: int = 3):
+def print_pair_2(claim1: str, claim2: str, true_label: str, predicted_label: str, score: float, round_num: int = 3):
     """
-    Print the claims pair in a nicely formatted way when the model disagrees with annotation
+    Print the claims pair in a nicely formatted way when the model disagrees with annotation.
 
     :param claim1: claim 1 string
     :param claim2: claim 2 string
@@ -127,7 +127,7 @@ def custom_plot_confusion_matrix(cm,
                                  cmap=None,
                                  normalize=False):
     """
-    Make a nice plot from a confusion matrix
+    Make a nice plot from a confusion matrix.
 
     :param cm: confusion matrix from sklearn.metrics.confusion_matrix
     :param target_names: class names, for example: ['high', 'medium', 'low']
@@ -169,17 +169,17 @@ def custom_plot_confusion_matrix(cm,
     thresh = cm.max() / 1.5 if normalize else cm.max() / 2
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         if normalize:
-            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+            plt.text(j, i, f"{cm[i,j]:0.4f}",
                      horizontalalignment="center",
                      color="white" if cm[i, j] > thresh else "black")
         else:
-            plt.text(j, i, "{:,}".format(cm[i, j]),
+            plt.text(j, i, f"{cm[i, j]:,}",
                      horizontalalignment="center",
                      color="white" if cm[i, j] > thresh else "black")
 
     plt.tight_layout()
     plt.ylabel('True label')
-    plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+    plt.xlabel(f"Predicted label\naccuracy={accuracy:0.4f}; misclass={misclass:0.4f}")
     # plt.show()
     plot_path = os.path.join(out_plot_dir, f"ConfMat_{model_id}_{time.month}-{time.day}-{time.year}.png")
     plt.savefig(plot_path)
@@ -280,7 +280,7 @@ def create_report(df: pd.DataFrame,
 
     if plot_rocs:
         n_classes = 3
-        #?????
+        # Need to double check if this is the right mapping of 0 1 2 to con/ent/neu
         binarized_annotations = label_binarize(df.annotation, classes=["contradiction", "entailment", "neutral"])
         predicted_annotations = np.array(df[['predicted_con', 'predicted_ent', 'predicted_neu']])
 
@@ -320,8 +320,7 @@ def create_report(df: pd.DataFrame,
 
     if write_disagreements:
         disagreements = df[df.annotation != df.predicted_class]
-        disagreements["predicted_class_prob"] = disagreements.loc[:, ["predicted_con", "predicted_ent", "predicted_neu"]].max(
-            axis=1)
+        disagreements["predicted_class_prob"] = disagreements.loc[:, ["predicted_con", "predicted_ent", "predicted_neu"]].max(axis=1)  # noqa: E501
 
         with open(os.path.join(out_report_dir, "disagreements.txt"), 'w') as dis_file:
 
@@ -336,6 +335,3 @@ def create_report(df: pd.DataFrame,
                                    pair_i.predicted_class_prob)
                 dis_file.write(out)
             dis_file.write("\n")
-
-
-

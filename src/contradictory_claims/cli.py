@@ -9,8 +9,8 @@ import click
 
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
-from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
-    extract_regex_pattern, filter_metadata_for_covid19
+# from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
+#     extract_regex_pattern, filter_metadata_for_covid19
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -30,18 +30,18 @@ def main(train, report):
 
     # CORD-19 metadata path
     # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
-    metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+    # metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
     # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
 
     # CORD-19 json files zip folder path
-    json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+    # json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
     # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
-    json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
+    # json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
 
     # CORD-19 publication cut off date
-    pub_date_cutoff = '2019-10-01'
+    # pub_date_cutoff = '2019-10-01'
 
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
     # directory structure and file names as follows.
@@ -64,9 +64,9 @@ def main(train, report):
     # Load and preprocess CORD-19 data
     # Extract names of files containing convid-19 synonymns in abstract/title
     # and published after a suitable cut-off date
-    covid19_metadata = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
-    pdf_filenames = list(covid19_metadata.pdf_json_files)
-    pmc_filenames = list(covid19_metadata.pmc_json_files)
+    # covid19_metadata = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
+    # pdf_filenames = list(covid19_metadata.pdf_json_files)
+    # pmc_filenames = list(covid19_metadata.pmc_json_files)
 
     # Extract full text for the files identified in previous step
     # NOTE: This seems to take a really long time, so I'm ommittng for now

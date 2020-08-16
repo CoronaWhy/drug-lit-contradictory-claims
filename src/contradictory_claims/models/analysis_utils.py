@@ -5,9 +5,9 @@
 import datetime
 import os
 
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Example inputs to make_timeline_plot
 # Graph data
@@ -21,13 +21,12 @@ import matplotlib.pyplot as plt
 
 def dates_to_proportions(dates: list[str], date_format: str = '%m/%d/%y'):
     """
-    Convert list of dates to positions on a timeline based on proportion of time passed
+    Convert list of dates to positions on a timeline based on proportion of time passed.
 
     :param dates: list of dates as strings
     :param date_format: format of the dates, to be parsed by datetime
     :return: list of proportions of time passed from 0 to 1
     """
-
     # Read into datetime format
     date_objs = [datetime.datetime.strptime(date, date_format) for date in dates]
     time_diffs = [(d2 - d1).days for d1, d2 in zip(date_objs[:-1], date_objs[1:])]
@@ -40,13 +39,13 @@ def dates_to_proportions(dates: list[str], date_format: str = '%m/%d/%y'):
 def make_timeline_plot(names: list[str],
                        dates: list[str],
                        paper_titles: list[str],
-                       edges_comparisons: list[(str,str)],
+                       edges_comparisons: list[(str, str)],
                        edges_comparisons_colors: list[str],
                        drug: str,
                        out_plot_dir: str,
                        date_format: str = '%m/%d/%y'):
     """
-    Create a timeline plot depicting paper contradictions and agreements for a specific drug
+    Create a timeline plot depicting paper contradictions and agreements for a specific drug.
 
     :param names: Names of nodes (NOTE: This may become obsolete later)
     :param dates: List of dates as strings
@@ -69,15 +68,13 @@ def make_timeline_plot(names: list[str],
     plt.figure('Timeline plot')
 
     # Create graph
-    G = nx.MultiDiGraph(format='png', directed=True)
+    graph = nx.MultiDiGraph(format='png', directed=True)
 
     for index, name in enumerate(names):
-        G.add_node(name, pos=positions[index])
+        graph.add_node(name, pos=positions[index])
 
-    labels = {}
-
-    layout = dict((n, G.nodes[n]["pos"]) for n in G.nodes())
-    nx.draw(G, pos=layout, with_labels=True, node_size=300)
+    layout = {(n, graph.nodes[n]["pos"]) for n in graph.nodes()}
+    nx.draw(graph, pos=layout, with_labels=True, node_size=300)
     ax = plt.gca()
     for edge, e_color in zip(edges_comparisons, edges_comparisons_colors):
         ax.annotate("",
@@ -86,9 +83,7 @@ def make_timeline_plot(names: list[str],
                     arrowprops=dict(arrowstyle="->", color=e_color,
                                     shrinkA=10, shrinkB=10,
                                     patchA=None, patchB=None,
-                                    connectionstyle="arc3,rad=0.5", mutation_scale=20
-                                    ),
-                    )
+                                    connectionstyle="arc3,rad=0.5", mutation_scale=20))
     for edge in edges_time:
         ax.annotate("",
                     xy=layout[edge[0]], xycoords='data',
@@ -96,13 +91,13 @@ def make_timeline_plot(names: list[str],
                     arrowprops=dict(arrowstyle="-", color="0.5",
                                     shrinkA=10, shrinkB=10,
                                     patchA=None, patchB=None,
-                                    connectionstyle="arc,rad=0.5",
-                                    ),
-                    )
+                                    connectionstyle="arc,rad=0.5"))
 
     for pos, date, title in zip(positions, dates, paper_titles):
-        # NOTE the offsets here are hard coded. This will likely cause errors as we scale to real data. This should be proportional instead probably
-        # ax.text(positions[i][0], -.021, s=dates[i], bbox=dict(facecolor='#DDDDDD', edgecolor="#DDDDDD", alpha=1),rotation=90,horizontalalignment='center')
+        # NOTE: Check this is okay when there are many more papers to include in timeline
+        # Kept this below in case we want a bounding box around titles
+        # ax.text(positions[i][0], -.021, s=dates[i], bbox=dict(facecolor='#DDDDDD', edgecolor="#DDDDDD", alpha=1),
+        # rotation=90,horizontalalignment='center')
         ax.text(pos[0], -.021, s=date, rotation=90, horizontalalignment='center')
         ax.text(pos[0] + .12, -.021, s=title, rotation=90, horizontalalignment='center')
 
