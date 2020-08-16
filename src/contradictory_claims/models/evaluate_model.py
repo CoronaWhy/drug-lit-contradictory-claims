@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from contradictory_claims.models.train_model import regular_encode
-from sklearn.metrics import accuracy_score, auc, f1_score, precision_score, recall_score, roc_curve
+from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
 from transformers import AutoTokenizer
 
@@ -24,8 +24,12 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     :return: Pandas DataFrame containing data
     """
     df = pd.read_excel(data_path, sheet_name=active_sheet)
+    print(f"LENGTH OF DF: {len(df)}")
+    # DELETE ME:
+    drop_na = False
     if drop_na:
         df = df.dropna().reset_index(drop=True)
+        print(f"DROPPED NAs NOW LEN OF DF: {len(df)}")
 
     return df
 
@@ -53,14 +57,17 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
     predictions = model.predict(encoded_inputs)
 
     if method == "multiclass":
-        df['predicted_con'] = predictions[:, 0]
+        # NEED TO CHECK THIS!!!
+        df['predicted_con'] = predictions[:, 2]
         df['predicted_ent'] = predictions[:, 1]
-        df['predicted_neu'] = predictions[:, 2]
+        df['predicted_neu'] = predictions[:, 0]
         # Calculate predicted class as the max predicted label
         df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
         df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
                                                'predicted_ent': 'entailment',
                                                'predicted_neu': 'neutral'}, inplace=True)
+        #  DELETE ME!
+        df.to_csv("/Users/dnsosa/Desktop/AltmanLab/ContradictoryClaims/drug-lit-contradictory-claims/output/DF_OUT.csv")
     elif method == "binary":
         df.predicted_con = predictions[:, 0]
     else:
@@ -78,7 +85,6 @@ def print_pair(claim1: str, claim2: str, score: float, round_num: int = 3):
     :param score: score associated with the pair
     :param round_num: number of places to round to
     :return: string representation of pairs nicely formatteed
-
     """
     out = "\nClaim 1\n"
     out += claim1 + "\n"
@@ -90,29 +96,122 @@ def print_pair(claim1: str, claim2: str, score: float, round_num: int = 3):
     return out
 
 
+def print_pair_2(claim1: str, claim2: str, true_label: str, predicted_label: str,  score: float, round_num: int = 3):
+    """
+    Print the claims pair in a nicely formatted way when the model disagrees with annotation
+
+    :param claim1: claim 1 string
+    :param claim2: claim 2 string
+    :param true_label: annotation for claim pair
+    :param predicted_label: prediction about claim pair
+    :param score: score associated with the pair
+    :param round_num: number of places to round to
+    :return: string representation of pairs nicely formatteed
+    """
+    out = "\nClaim 1\n"
+    out += claim1 + "\n"
+    out += "\nClaim 2\n"
+    out += claim2 + "\n"
+    out += f"\nAnnotated label: {true_label}\t Predicted label: {predicted_label} (Prob = {score:.{round_num}f})\n"
+    out += "----------------------------------------------------------------------------\n"
+
+    return out
+
+
+def custom_plot_confusion_matrix(cm,
+                                 target_names,
+                                 out_plot_dir: str,
+                                 model_id: str,
+                                 time: datetime.datetime,
+                                 title='Confusion matrix',
+                                 cmap=None,
+                                 normalize=False):
+    """
+    Make a nice plot from a confusion matrix
+
+    :param cm: confusion matrix from sklearn.metrics.confusion_matrix
+    :param target_names: class names, for example: ['high', 'medium', 'low']
+    :param out_plot_dir: directory to save plot
+    :param model_id: string identifier for the model used, for file naming purposes
+    :param time: time function was called, for file naming purposes
+    :param title: the text to display at the top of the matrix
+    :param cmap: the gradient of the values displayed from matplotlib.pyplot.cm
+    :param normalize: if False, plot the raw numbers, else plot the proportions
+
+    Citiation
+    ---------
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import itertools
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+    # plt.show()
+    plot_path = os.path.join(out_plot_dir, f"ConfMat_{model_id}_{time.month}-{time.day}-{time.year}.png")
+    plt.savefig(plot_path)
+
+
 def create_report(df: pd.DataFrame,
                   model_id: str,
-                  out_report_file: str,
+                  out_report_dir: str,
                   out_plot_dir: str,
                   method: str = "multiclass",
                   include_top_scoring: bool = True,
                   k: int = 10,
                   plot_rocs: bool = True,
+                  plot_confusion_matrix: bool = True,
+                  write_disagreements: bool = True,
                   round_num: int = 3):
     """
     Generate a report with the results of the predictions and various evaluation metrics.
 
     :param df: Pandas DataFrame containing data with predictions made using trained model
     :param model_id: string identifier for the model being used for predictions
-    :param out_report_file: path to write report to
+    :param out_report_dir: path to write report to
     :param out_plot_dir: path (directory) to write figures to
     :param method: "multiclass" or "binary"--describes setting for prediction outputs
     :param include_top_scoring: if True, include examples of top-scoring contradictory claims
     :param k: number of top-scoring contradictory claims to include in the report
     :param plot_rocs: if True, plot ROCs of performance
+    :param plot_confusion_matrix: if True, plot confusion matrix of performance
+    :param write_disagreements: if True, write out the cases where the model disagrees with annotations
     :param round_num: number of decimal places to round to
     """
-    with open(out_report_file, 'w') as out_file:
+    with open(os.path.join(out_report_dir, "summary_report.txt"), 'w') as out_file:
 
         # Count number of annotations of each class
         # NOTE: This expects column name to be "annotation" for true labels
@@ -130,6 +229,8 @@ def create_report(df: pd.DataFrame,
         # Calculate accuracy/PR metrics
         out_file.write("Accuracy/Precision/Recall/F1 Metrics:\n")
         out_file.write("=====================================\n\n")
+
+        now = datetime.datetime.now()
 
         if method == "multiclass":
             accuracy = accuracy_score(df.annotation, df.predicted_class)
@@ -179,6 +280,7 @@ def create_report(df: pd.DataFrame,
 
     if plot_rocs:
         n_classes = 3
+        #?????
         binarized_annotations = label_binarize(df.annotation, classes=["contradiction", "entailment", "neutral"])
         predicted_annotations = np.array(df[['predicted_con', 'predicted_ent', 'predicted_neu']])
 
@@ -201,8 +303,7 @@ def create_report(df: pd.DataFrame,
         for i in range(n_classes):
             plt.plot(fpr[i], tpr[i], label=f'ROC curve of class {i} (area = {roc_auc[i]:0.{round_num}f})')
 
-        now = datetime.datetime.now()
-        plot_path = os.path.join(out_plot_dir, f"{model_id}_{now.month}-{now.day}-{now.year}.png")
+        plot_path = os.path.join(out_plot_dir, f"ROC_{model_id}_{now.month}-{now.day}-{now.year}.png")
         plt.plot([0, 1], [0, 1], 'k--')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
@@ -211,3 +312,30 @@ def create_report(df: pd.DataFrame,
         plt.title('Some extension of Receiver operating characteristic to multi-class')
         plt.legend(loc="lower right")
         plt.savefig(plot_path)
+
+    if plot_confusion_matrix:
+        conf_mat = confusion_matrix(df.annotation, df.predicted_class)
+        # Need to check the order of the labels is right
+        custom_plot_confusion_matrix(conf_mat, ["contradiction", "entailment", "neutral"], out_plot_dir, model_id, now)
+
+    if write_disagreements:
+        disagreements = df[df.annotation != df.predicted_class]
+        disagreements["predicted_class_prob"] = disagreements.loc[:, ["predicted_con", "predicted_ent", "predicted_neu"]].max(
+            axis=1)
+
+        with open(os.path.join(out_report_dir, "disagreements.txt"), 'w') as dis_file:
+
+            # disagreements[['text1', 'text2', 'annotation', 'predicted_class', 'predicted_class_prob']]
+            dis_file.write("PAIRS OF CLAIMS WHOSE PREDICTIONS DISAGREE WITH OUR ANNOTATIONS\n")
+            dis_file.write("===============================================================\n")
+            dis_file.write(f"\n{len(disagreements)} disagreements total\n")
+
+            for i in range(len(disagreements)):
+                pair_i = disagreements.iloc[i]
+                out = print_pair_2(pair_i.text1, pair_i.text2, pair_i.annotation, pair_i.predicted_class,
+                                   pair_i.predicted_class_prob)
+                dis_file.write(out)
+            dis_file.write("\n")
+
+
+

@@ -29,10 +29,13 @@ def main(train, report):
     trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
 
     # CORD-19 metadata path
+    # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
     metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+    # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
 
     # CORD-19 json files zip folder path
     json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+    # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
     json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
@@ -66,33 +69,34 @@ def main(train, report):
     pmc_filenames = list(covid19_metadata.pmc_json_files)
 
     # Extract full text for the files identified in previous step
-    covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,
-                                           pdf_filenames, pmc_filenames)
+    # NOTE: This seems to take a really long time, so I'm ommittng for now
+    # covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,
+    #                                        pdf_filenames, pmc_filenames)
 
     # Construct regex match pattern for putative conclusion section headers
-    search_terms = ['conclusion',
-                    'discussion',
-                    'interpretation',
-                    'added value of this study',
-                    'research in context',
-                    'concluding',
-                    'closing remarks',
-                    'summary of findings',
-                    'outcome']
-    search_pattern = construct_regex_match_pattern(search_terms)
+    # search_terms = ['conclusion',
+    #                 'discussion',
+    #                 'interpretation',
+    #                 'added value of this study',
+    #                 'research in context',
+    #                 'concluding',
+    #                 'closing remarks',
+    #                 'summary of findings',
+    #                 'outcome']
+    # search_pattern = construct_regex_match_pattern(search_terms)
 
     # Extract section headers for title\abstract\conclusion sections
-    unique_sections = set(covid19_df.section.tolist())
-    section_list = extract_regex_pattern(unique_sections, search_pattern)
-    section_list = [i.lower() for i in section_list]
-    section_list.append('abstract')
-    section_list.append('title')
+    # unique_sections = set(covid19_df.section.tolist())
+    # section_list = extract_regex_pattern(unique_sections, search_pattern)
+    # section_list = [i.lower() for i in section_list]
+    # section_list.append('abstract')
+    # section_list.append('title')
 
     # Extract title\abstract\conclusion sections from publication text
-    covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
+    # covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
 
     # Clean the text to keep only meaningful sentences
-    covid19_clean_df = clean_text(covid19_filt_section_df)  # noqa: F841
+    # covid19_clean_df = clean_text(covid19_filt_section_df)  # noqa: F841
 
     if train:
         # Load BERT train and test data
@@ -124,16 +128,18 @@ def main(train, report):
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
-        eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
-        active_sheet = "drug_individual_claims_similari"
+        # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
+        # active_sheet = "drug_individual_claims_similari"
+        eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
+        active_sheet = "All_phase2"
         eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name)
 
         # Now create the report
-        out_report_file = os.path.join(trained_model_out_dir, "results_report.txt")
-        create_report(eval_data, model_id=model_id, out_report_file=out_report_file, out_plot_dir=trained_model_out_dir)
+        out_report_dir = os.path.join(trained_model_out_dir)
+        create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir, out_plot_dir=trained_model_out_dir)
 
 
 if __name__ == '__main__':
