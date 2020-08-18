@@ -282,3 +282,5 @@ def filter_section_with_drugs(input_data: pd.DataFrame, drug_lex_path: str):
     for index, row in drugs_section_df.iterrows():
         drugs_used = [drug for drug in drug_terms if drug in row.text]
         drugs_section_df.at[index, 'drug_terms_used'] = ','.join(drugs_used)
+
+    return drugs_section_df
