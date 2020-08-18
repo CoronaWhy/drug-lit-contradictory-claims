@@ -62,7 +62,7 @@ class TestPreprocessCord(unittest.TestCase):
         """Test that title, abstract, and conclusion sections are extracted properly from publication text."""
         covid19_df = pd.read_csv(sample_covid19_df_path)
         covid19_filt_section_df = extract_section_from_text(sample_conclusion_search_terms_path, covid19_df)
-        self.assertEqual(len(covid19_filt_section_df), 5)
+        self.assertEqual(len(covid19_filt_section_df), 8)
 
     def test_clean_text(self):
         """Test that text is cleaned properly."""
@@ -75,7 +75,7 @@ class TestPreprocessCord(unittest.TestCase):
         covid19_df = pd.read_csv(sample_covid19_df_path)
         merged_df = merge_section_text(covid19_df)
         self.assertEqual(len(merged_df), 6)
-        self.assertEqual(merged_df.columns, ['cord_uid', 'text', 'section'])
+        self.assertEqual((merged_df.columns == ['cord_uid', 'text', 'section']).all())
 
     def test_filter_section_with_drugs(self):
         """Test that section filtering for drugs is performed properly."""
@@ -83,4 +83,4 @@ class TestPreprocessCord(unittest.TestCase):
         covid19_df.rename(columns={'sentence': 'text'}, inplace=True)
         drugs_section_df = filter_section_with_drugs(covid19_df, sample_drug_lex_path)
         self.assertEqual(len(drugs_section_df), 3)
-        self.assertEqual(drugs_section_df.columns, ['cord_uid', 'text', 'section', 'drug_terms_used'])
+        self.assertTrue((drugs_section_df.columns == ['cord_uid', 'text', 'section', 'drug_terms_used']).all())

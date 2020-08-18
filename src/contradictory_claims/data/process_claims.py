@@ -24,9 +24,9 @@ def initialize_nlp(virus_lex_path: str):
     :return: Scispacy nlp object
     """
     # Load the scispacy large model
-    # nlp = en_core_sci_lg.load(disable='parser')
+    nlp = en_core_sci_lg.load(disable='parser')
     # I believe this should work, I wonder if it's not recommended for  memory reasons though in a v env like Travis...
-    nlp = spacy.load("en_core_sci_lg")
+    # nlp = spacy.load("en_core_sci_lg")
     # Enable umls entity detection and abbreviation detection
     linker = UmlsEntityLinker(resolve_abbreviations=True)
     nlp.add_pipe(linker)
