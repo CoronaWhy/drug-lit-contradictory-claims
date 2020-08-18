@@ -26,14 +26,14 @@ class TestProcessClaims(unittest.TestCase):
 
     def test_1_split_papers_on_claim_presence(self):
         """Test that papers are split correctly based on claim presence."""
-        self.claims_data, self.no_claims_data\
-            = split_papers_on_claim_presence(self.claims_df)
-        self.assertEqual(len(self.claims_data), 12)
-        self.assertEqual(len(self.no_claims_data), 5)
+        self.__class__.claims_data, self.__class__.no_claims_data\
+            = split_papers_on_claim_presence(self.__class__.claims_df)
+        self.assertEqual(len(self.__class__.claims_data), 12)
+        self.assertEqual(len(self.__class__.no_claims_data), 5)
 
     def test_2_tokenize_section_text(self):
         """Test that section text is tokenized properly."""
-        tok_no_claims_data = tokenize_section_text(self.no_claims_data)
+        tok_no_claims_data = tokenize_section_text(self.__class__.no_claims_data)
         self.assertEqual(len(tok_no_claims_data), 15)
 
     def test_3_initialize_nlp(self):
