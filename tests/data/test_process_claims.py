@@ -21,10 +21,10 @@ class TestProcessClaims(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up class variables to pass between test functions."""
-        self.claims_df = pd.read_csv(sample_raw_claims_df_path)
-        self.claims_data = pd.DataFrame()
-        self.no_claims_data = pd.DataFrame()
-        self.claims_paired_df = pd.DataFrame()
+        self.__class__.claims_df = pd.read_csv(sample_raw_claims_df_path)
+        self.__class__.claims_data = pd.DataFrame()
+        self.__class__.no_claims_data = pd.DataFrame()
+        self.__class__.claims_paired_df = pd.DataFrame()
 
     def test_1_split_papers_on_claim_presence(self):
         """Test that papers are split correctly based on claim presence."""
