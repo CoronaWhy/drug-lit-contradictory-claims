@@ -4,12 +4,12 @@
 
 from itertools import combinations
 
-import en_core_sci_lg
+# import en_core_sci_lg
 import pandas as pd
 import spacy
 from nltk import sent_tokenize
 from numba import jit
-# import scispacy
+import scispacy  # noqa: F401
 from scispacy.abbreviation import AbbreviationDetector
 from scispacy.umls_linking import UmlsEntityLinker
 from sklearn.metrics.pairwise import cosine_similarity
@@ -24,9 +24,9 @@ def initialize_nlp(virus_lex_path: str):
     :return: Scispacy nlp object
     """
     # Load the scispacy large model
-    nlp = en_core_sci_lg.load(disable='parser')
+    # nlp = en_core_sci_lg.load(disable='parser')
     # I believe this should work, I wonder if it's not recommended for  memory reasons though in a v env like Travis...
-    # nlp = spacy.load("en_core_sci_lg", disable='parser')
+    nlp = spacy.load("en_core_sci_lg", disable='parser')
     # Enable umls entity detection and abbreviation detection
     linker = UmlsEntityLinker(resolve_abbreviations=True)
     nlp.add_pipe(linker)

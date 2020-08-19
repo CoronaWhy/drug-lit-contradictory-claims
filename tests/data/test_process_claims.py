@@ -14,6 +14,8 @@ from .constants import sample_metadata_path, sample_raw_claims_df_path, sample_v
 
 
 #unittest.TestLoader.sortTestMethodsUsing = None
+
+
 class TestProcessClaims(unittest.TestCase):
     """Tests for processing CORD-19 claims."""
 
