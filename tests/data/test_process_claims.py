@@ -40,12 +40,12 @@ class TestProcessClaims(unittest.TestCase):
 
     def test_3_initialize_nlp(self):
         """Test that scispacy nlp object is initialized properly."""
-        nlp = initialize_nlp(sample_virus_lex_path)
+        nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
         self.assertEqual(type(nlp), 'spacy.lang.en.English')
 
     def test_4_pair_similar_claims(self):
         """Test that CORD-19 claims are paired properly."""
-        nlp = initialize_nlp(sample_virus_lex_path)
+        nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
         self.claims_paired_df = pair_similar_claims(self.claims_data, nlp)
         self.assertTrue(len(self.claims_paired_df) >= 1)
         self.assertEqual(len(self.claims_paired_df.columns), 7)

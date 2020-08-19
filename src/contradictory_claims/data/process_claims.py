@@ -16,17 +16,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 # from spacy.vocab import Vocab
 
 
-def initialize_nlp(virus_lex_path: str):
+def initialize_nlp(virus_lex_path: str, scispacy_model_name: str = "en_core_sci_lg"):
     """
     Initialize scispacy nlp object and virus terms to the vocabulary.
 
     :param virus_lex_path: path to virus lexicon
+    :param scispacy_model_name: name of scispacy model to use for w2v vectors
     :return: Scispacy nlp object
     """
     # Load the scispacy large model
     # nlp = en_core_sci_lg.load(disable='parser')
     # I believe this should work, I wonder if it's not recommended for  memory reasons though in a v env like Travis...
-    nlp = spacy.load("en_core_sci_lg", disable='parser')
+    nlp = spacy.load(scispacy_model_name, disable='parser')
     # Enable umls entity detection and abbreviation detection
     linker = UmlsEntityLinker(resolve_abbreviations=True)
     nlp.add_pipe(linker)
