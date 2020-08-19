@@ -9,7 +9,7 @@ import pandas as pd
 import spacy
 from nltk import sent_tokenize
 from numba import jit
-import scispacy  # noqa: F401
+# import scispacy  # noqa: F401
 from scispacy.abbreviation import AbbreviationDetector
 from scispacy.umls_linking import UmlsEntityLinker
 from sklearn.metrics.pairwise import cosine_similarity

@@ -13,7 +13,7 @@ from contradictory_claims.data.process_claims import add_cord_metadata, initiali
 from .constants import sample_metadata_path, sample_raw_claims_df_path, sample_virus_lex_path
 
 
-#unittest.TestLoader.sortTestMethodsUsing = None
+# unittest.TestLoader.sortTestMethodsUsing = None
 
 
 class TestProcessClaims(unittest.TestCase):
