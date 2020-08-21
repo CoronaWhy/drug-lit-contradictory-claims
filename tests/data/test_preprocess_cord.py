@@ -75,7 +75,7 @@ class TestPreprocessCord(unittest.TestCase):
         covid19_df = pd.read_csv(sample_covid19_df_path)
         merged_df = merge_section_text(covid19_df)
         self.assertEqual(len(merged_df), 6)
-        self.assertTrue((merged_df.columns == ['cord_uid', 'text', 'section']).all())
+        self.assertTrue((merged_df.columns == ['cord_uid', 'section', 'text']).all())
 
     def test_filter_section_with_drugs(self):
         """Test that section filtering for drugs is performed properly."""

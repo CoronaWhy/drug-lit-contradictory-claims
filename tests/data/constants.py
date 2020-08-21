@@ -34,6 +34,8 @@ sample_covid19_df_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19_pro
 
 # Claims dataframe paths
 sample_raw_claims_df_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19_processed/test_claims_flag.csv')
+sample_no_claims_df_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19_processed/test_no_claims_text.csv')
+sample_paired_claims_df_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19_processed/test_paired_claims.csv')
 
 # MultiNLI paths
 multinli_train_path = os.path.join(ROOT_DIR, 'input/multinli/multinli_1.0_train.txt')
