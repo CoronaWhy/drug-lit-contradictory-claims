@@ -7,10 +7,12 @@ import unittest
 # since we want a sequential data flow between the tests
 
 import pandas as pd
-from contradictory_claims.data.process_claims import add_cord_metadata, initialize_nlp,\
-    pair_similar_claims, split_papers_on_claim_presence, tokenize_section_text
+from contradictory_claims.data.process_claims import add_cord_metadata,\
+    split_papers_on_claim_presence, tokenize_section_text
+# initialize_nlp, pair_similar_claims,\
 
-from .constants import sample_metadata_path, sample_raw_claims_df_path, sample_virus_lex_path
+from .constants import sample_metadata_path, sample_raw_claims_df_path
+# sample_virus_lex_path
 
 
 # unittest.TestLoader.sortTestMethodsUsing = None
@@ -38,17 +40,17 @@ class TestProcessClaims(unittest.TestCase):
         tok_no_claims_data = tokenize_section_text(self.__class__.no_claims_data)
         self.assertEqual(len(tok_no_claims_data), 15)
 
-    def test_3_initialize_nlp(self):
-        """Test that scispacy nlp object is initialized properly."""
-        nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
-        self.assertEqual(type(nlp), 'spacy.lang.en.English')
+#   def test_3_initialize_nlp(self):
+#       """Test that scispacy nlp object is initialized properly."""
+#       nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
+#       self.assertEqual(type(nlp), 'spacy.lang.en.English')
 
-    def test_4_pair_similar_claims(self):
-        """Test that CORD-19 claims are paired properly."""
-        nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
-        self.claims_paired_df = pair_similar_claims(self.claims_data, nlp)
-        self.assertTrue(len(self.claims_paired_df) >= 1)
-        self.assertEqual(len(self.claims_paired_df.columns), 7)
+#    def test_4_pair_similar_claims(self):
+#        """Test that CORD-19 claims are paired properly."""
+#        nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
+#        self.claims_paired_df = pair_similar_claims(self.claims_data, nlp)
+#        self.assertTrue(len(self.claims_paired_df) >= 1)
+#        self.assertEqual(len(self.claims_paired_df.columns), 7)
 
     def test_5_add_cord_metadata(self):
         """Test that input CORD metadata is added properly."""
