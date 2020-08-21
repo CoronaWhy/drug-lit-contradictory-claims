@@ -52,7 +52,7 @@ class TestProcessClaims(unittest.TestCase):
 #        self.assertTrue(len(self.claims_paired_df) >= 1)
 #        self.assertEqual(len(self.claims_paired_df.columns), 7)
 
-    def test_5_add_cord_metadata(self):
-        """Test that input CORD metadata is added properly."""
-        claims_paired_meta_df = add_cord_metadata(self.claims_paired_df, sample_metadata_path)
-        self.assertEqual(len(claims_paired_meta_df.columns), 11)
+#    def test_5_add_cord_metadata(self):
+#        """Test that input CORD metadata is added properly."""
+#        claims_paired_meta_df = add_cord_metadata(self.claims_paired_df, sample_metadata_path)
+#        self.assertEqual(len(claims_paired_meta_df.columns), 11)
