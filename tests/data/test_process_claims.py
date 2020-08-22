@@ -42,6 +42,7 @@ class TestProcessClaims(unittest.TestCase):
         tok_no_claims_data = tokenize_section_text(no_claims_data)
         self.assertEqual(len(tok_no_claims_data), 15)
 
+# TODO: Fix scispacy download error in travis to run the below tests
 #   def test_3_initialize_nlp(self):
 #       """Test that scispacy nlp object is initialized properly."""
 #       nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
