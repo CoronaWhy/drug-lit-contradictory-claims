@@ -5,14 +5,16 @@
 from itertools import combinations
 
 # import en_core_sci_lg
-import pandas as pd
-import spacy
-from nltk import sent_tokenize
-from numba import jit
+import nltk
+nltk.download('punkt')
+import pandas as pd  # noqa: E402
+import spacy  # noqa: E402
+from nltk import sent_tokenize  # noqa: E402
+from numba import jit  # noqa: E402
 # import scispacy  # noqa: F401
-from scispacy.abbreviation import AbbreviationDetector
-from scispacy.umls_linking import UmlsEntityLinker
-from sklearn.metrics.pairwise import cosine_similarity
+from scispacy.abbreviation import AbbreviationDetector  # noqa: E402
+from scispacy.umls_linking import UmlsEntityLinker  # noqa: E402
+from sklearn.metrics.pairwise import cosine_similarity  # noqa: E402
 # from spacy.vocab import Vocab
 
 
