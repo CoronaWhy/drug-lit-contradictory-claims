@@ -179,3 +179,5 @@ def add_cord_metadata(input_data, metadata_path):
                           right_on='cord_uid')
     cols_rename = {'title': 'title2', 'publish_time': 'publish_time2'}
     input_data.rename(columns=cols_rename, inplace=True)
+
+    return input_data
