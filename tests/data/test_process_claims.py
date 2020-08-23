@@ -58,5 +58,6 @@ class TestProcessClaims(unittest.TestCase):
     def test_5_add_cord_metadata(self):
         """Test that input CORD metadata is added properly."""
         claims_paired_df = pd.read_csv(sample_paired_claims_df_path)
+        self.assertEqual(len(claims_paired_meta_df.columns), 7)
         claims_paired_meta_df = add_cord_metadata(claims_paired_df, sample_metadata_path)
         self.assertEqual(len(claims_paired_meta_df.columns), 11)
