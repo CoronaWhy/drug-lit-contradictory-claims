@@ -171,6 +171,7 @@ def add_cord_metadata(input_data, metadata_path):
                           left_on='paper1_cord_uid',
                           right_on='cord_uid')
     cols_rename = {'title': 'title1', 'publish_time': 'publish_time1'}
+    input_data.drop(columns='cord_uid', inplace=True)
     input_data.rename(columns=cols_rename, inplace=True)
 
     # Add title and publish time for second claim's paper
@@ -178,6 +179,7 @@ def add_cord_metadata(input_data, metadata_path):
                           left_on='paper2_cord_uid',
                           right_on='cord_uid')
     cols_rename = {'title': 'title2', 'publish_time': 'publish_time2'}
+    input_data.drop(columns='cord_uid', inplace=True)
     input_data.rename(columns=cols_rename, inplace=True)
 
     return input_data
