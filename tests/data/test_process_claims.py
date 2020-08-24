@@ -7,11 +7,11 @@ import unittest
 import pandas as pd
 from contradictory_claims.data.process_claims import add_cord_metadata,\
     split_papers_on_claim_presence, tokenize_section_text
-# initialize_nlp, pair_similar_claims\
+    initialize_nlp, pair_similar_claims\
 
 from .constants import sample_metadata_path, sample_no_claims_df_path,\
     sample_paired_claims_df_path, sample_raw_claims_df_path
-# sample_virus_lex_path
+    sample_virus_lex_path
 
 # Disable sorting of test methods so they run in the same order as defined below,
 # since we want a sequential data flow between the tests
