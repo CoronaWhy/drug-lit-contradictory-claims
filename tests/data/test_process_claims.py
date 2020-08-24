@@ -42,7 +42,7 @@ class TestProcessClaims(unittest.TestCase):
         tok_no_claims_data = tokenize_section_text(no_claims_data)
         self.assertEqual(len(tok_no_claims_data), 15)
 
-    def test_4_pair_similar_claims(self):
+    def test_3_pair_similar_claims(self):
         """Test that CORD-19 claims are paired properly."""
         nlp = initialize_nlp(sample_virus_lex_path, "en_core_sci_sm")
         self.assertEqual(type(nlp), 'spacy.lang.en.English')
@@ -50,7 +50,7 @@ class TestProcessClaims(unittest.TestCase):
         self.assertTrue(len(self.claims_paired_df) >= 1)
         self.assertEqual(len(self.claims_paired_df.columns), 7)
 
-    def test_5_add_cord_metadata(self):
+    def test_4_add_cord_metadata(self):
         """Test that input CORD metadata is added properly."""
         claims_paired_df = pd.read_csv(sample_paired_claims_df_path)
         claims_paired_meta_df = add_cord_metadata(claims_paired_df, sample_metadata_path)
