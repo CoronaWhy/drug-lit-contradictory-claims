@@ -35,7 +35,7 @@ def main(train, report):
     metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
 
     # CORD-19 json files zip folder path
-    json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+    json_text_file_dir = os.path.join(root_dir, 'input/cord19/document_parses.zip')
 
     # Path for temporary file storage during CORD-19 processing
     json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')

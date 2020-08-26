@@ -11,8 +11,9 @@ metadata_path = os.path.join(ROOT_DIR, 'input/cord19/test_metadata.csv')
 sample_metadata_path = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/test_metadata.csv')
 
 # CORD-19 json files zip folder path
-json_text_file_dir = os.path.join(ROOT_DIR, 'input/cord19/test_json.zip')
-sample_json_text_file_dir = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/test_json.zip')
+json_text_file_dir = os.path.join(ROOT_DIR, 'input/cord19/test_document_parses.zip')
+sample_json_text_file_dir = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/test_document_parses.zip')
+sample_json_text_file_dir_tar = os.path.join(ROOT_DIR, 'tests/data/resources/cord19/test_document_parses.tar.gz')
 
 # Path for temporary file storage during CORD-19 processing
 json_temp_path = os.path.join(ROOT_DIR, 'input/cord19/extracted/')

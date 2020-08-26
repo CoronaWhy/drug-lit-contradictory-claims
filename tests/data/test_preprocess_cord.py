@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import shutil
 import unittest
 # from datetime import datetime
 
@@ -13,7 +14,7 @@ from contradictory_claims.data.preprocess_cord import clean_text, construct_rege
 
 from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
     sample_conclusion_search_terms_path, sample_covid19_df_path, sample_drug_lex_path, sample_json_temp_path,\
-    sample_json_text_file_dir, sample_metadata_path, sample_virus_lex_path
+    sample_json_text_file_dir, sample_json_text_file_dir_tar, sample_metadata_path, sample_virus_lex_path
 
 
 class TestPreprocessCord(unittest.TestCase):
@@ -38,7 +39,14 @@ class TestPreprocessCord(unittest.TestCase):
     def test_extract_json_to_dataframe(self):
         """Test that CORD-19 json files are loaded properly."""
         covid_metadata = filter_metadata_for_covid19(sample_metadata_path, sample_virus_lex_path, pub_date_cutoff)
+        # Test for .zip directory
         covid19_df = extract_json_to_dataframe(covid_metadata, sample_json_text_file_dir, sample_json_temp_path,
+                                               pdf_filenames, pmc_filenames)
+        self.assertEqual(len(covid19_df.columns), 3)
+        self.assertTrue(len(covid19_df) >= 1)
+        shutil.rmtree(sample_json_temp_path)
+        # Test for .tar.gz directory
+        covid19_df = extract_json_to_dataframe(covid_metadata, sample_json_text_file_dir_tar, sample_json_temp_path,
                                                pdf_filenames, pmc_filenames)
         self.assertEqual(len(covid19_df.columns), 3)
         self.assertTrue(len(covid19_df) >= 1)
