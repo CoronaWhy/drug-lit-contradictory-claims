@@ -7,10 +7,14 @@ Installation
 To download this code and install in development mode, do the following:
 
 .. code-block::
-
+    $ fork a copy
     $ git clone https://github.com/CoronaWhy/drug-lit-contradictory-claims.git
     $ cd drug-lit-contradictory-claims
     $ pip install -e .
+    
+.. code-block::
+    $ install PyTorch https://pytorch.org/get-started/locally/
+    
 
 Testing |build| |coverage|
 --------------------------
