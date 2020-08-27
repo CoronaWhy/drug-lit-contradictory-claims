@@ -7,10 +7,22 @@ Installation
 To download this code and install in development mode, do the following:
 
 .. code-block::
-
+    
+    $ fork a copy
     $ git clone https://github.com/CoronaWhy/drug-lit-contradictory-claims.git
     $ cd drug-lit-contradictory-claims
     $ pip install -e .
+    
+Dependencies
+------------
+.. code-block::
+
+    $ pip install Torch:
+       - Windows - pip install torch===1.6.0 torchvision===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
+       - Mac - pip install torch torchvision 
+            # MacOS Binaries dont support CUDA, install from source (https://pytorch.org/) if CUDA is needed
+       - Linux - pip install torch torchvision
+
 
 Testing |build| |coverage|
 --------------------------
