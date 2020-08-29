@@ -154,6 +154,8 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                 # If an abstract section does not exist, skip
                 except KeyError:
                     pass
+                except IndexError:
+                    pass
 
                 for temp_dict in paper_df['body_text'][0]:
                     text = temp_dict['text']
