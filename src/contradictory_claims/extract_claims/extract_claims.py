@@ -9,12 +9,12 @@ from allennlp.common.file_utils import cached_path
 from allennlp.models.archival import load_archive
 from allennlp.modules import ConditionalRandomField, TimeDistributed
 from allennlp.predictors import Predictor
+from discourse.dataset_readers import CrfPubmedRCTReader
+from discourse.models import DiscourseCrfClassifier  # noqa:F401
 from nltk import sent_tokenize
 from torch.nn import Linear
 
-from .dataset_reader import CrfPubmedRCTReader
 from .predictors import ClaimCrfPredictor
-from .models import DiscourseCrfClassifier  # noqa:F401
 from .utils import MODEL_PATH, WEIGHT_PATH
 
 nltk.download('punkt')
