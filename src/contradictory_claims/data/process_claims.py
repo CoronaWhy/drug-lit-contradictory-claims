@@ -117,14 +117,22 @@ def pair_similar_claims(claims_data: pd.DataFrame, nlp):
     # Add a new column for storing the drug terms present in each claim
     claims_data['drug_terms_mention'] = [[d for d in drug_terms if d in c] for c in claims_data.claims]
 
-    # Pair all claims
-    paper_pairs = list(combinations(claims_data.index, 2))
+    drug_terms_mentions_flat = [d for d_list in claims_data['drug_terms_mention'] for d in d_list]
+    drug_terms_mentions_flat = list(set(drug_terms_mentions_flat))
+
     paper_pairs_filt = []
-    # Filter to claim pairs that come from different papers and have at least 1 drug term in common
-    for i, j in paper_pairs:
-        if claims_data.cord_uid[i] != claims_data.cord_uid[j]:
-            if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
+    # Loop through drugs and filter to claims that mention the drug term
+    for d in drug_terms_mentions_flat:
+        claims_with_drug_index = [d in d_list for d_list in claims_data.drug_terms_mention]
+        claims_with_drug = claims_data[claims_with_drug_index]
+         # Pair all claims with the same drug mention
+        paper_pairs = list(combinations(claims_with_drug.index, 2))
+        # Filter to claim pairs that come from different papers
+        for i, j in paper_pairs:
+            if claims_with_drug.cord_uid[i] != claims_with_drug.cord_uid[j]:
+                #if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
                 paper_pairs_filt.append((i, j))
+    paper_pairs_filt = list(set(paper_pairs_filt))
 
     # Calculate scispacy vector for each claim
     claims_data['w2vVector'] = [nlp(c).vector.reshape(1, -1) for c in claims_data.claims]
