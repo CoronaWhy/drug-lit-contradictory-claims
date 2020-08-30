@@ -13,7 +13,7 @@ install:
 
 script:
 
-  - travis_wait tox -r
+  - tox -r
 
 after_success:
   - tox -e coverage-report
