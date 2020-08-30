@@ -125,12 +125,12 @@ def pair_similar_claims(claims_data: pd.DataFrame, nlp):
     for d in drug_terms_mentions_flat:
         claims_with_drug_index = [d in d_list for d_list in claims_data.drug_terms_mention]
         claims_with_drug = claims_data[claims_with_drug_index]
-         # Pair all claims with the same drug mention
+        # Pair all claims with the same drug mention
         paper_pairs = list(combinations(claims_with_drug.index, 2))
         # Filter to claim pairs that come from different papers
         for i, j in paper_pairs:
             if claims_with_drug.cord_uid[i] != claims_with_drug.cord_uid[j]:
-                #if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
+                # if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
                 paper_pairs_filt.append((i, j))
     paper_pairs_filt = list(set(paper_pairs_filt))
 
