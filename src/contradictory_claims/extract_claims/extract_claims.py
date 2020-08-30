@@ -1,6 +1,13 @@
 """Function to extract Claims."""
 
 
+try:
+    import discourse  # noqa:F401
+except Exception:
+    import pip
+    pip._internal.main(["install", "git+https://github.com/titipata/detecting-scientific-claim.git"])
+    import discourse  # noqa:F401
+
 import nltk
 import numpy as np
 import pandas as pd
