@@ -16,7 +16,6 @@ from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
     sample_json_text_file_dir, sample_metadata_path, sample_virus_lex_path
 
 
-
 class TestPreprocessCord(unittest.TestCase):
     """Tests for preprocessing CORD-19."""
 
@@ -72,4 +71,3 @@ class TestPreprocessCord(unittest.TestCase):
     def test_filter_section_with_drugs(self):
         """Test that section filtering for drugs is performed properly."""
         pass
-
