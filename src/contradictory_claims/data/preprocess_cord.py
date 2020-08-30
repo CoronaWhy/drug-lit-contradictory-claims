@@ -30,15 +30,12 @@ def construct_regex_match_pattern(search_terms_file_path: str, search_type: str 
 
     elif search_type == 'flank_white_space':
         exact_pattern = '\W' + '\W|\W'.join([i.lower() for i in search_terms]) + '\W'  # noqa: W605
-
-
         return exact_pattern
 
     else:
         # TODO: fix flake8 error code FS001
         fuzzy_terms = ['.*%s.*' % i.lower() for i in search_terms]  # noqa: FS001
         fuzzy_pattern = '|'.join(fuzzy_terms)
-
         return fuzzy_pattern
 
 
@@ -185,7 +182,6 @@ def extract_regex_pattern(section_list: List[str], pattern: str):
 def extract_section_from_text(conc_search_terms_path: str, covid19_df: pd.DataFrame):
     """
     Extract title, abstract, and conclusion sections from publication text.
-
     :param conc_search_terms_path: file path for search terms for putative conclusion section headers
     :param covid19_df: pandas dataframe of publication text
     :return: dataframe of title, abstract, and conclusion section text
