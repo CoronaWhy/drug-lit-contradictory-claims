@@ -2,7 +2,7 @@
 
 import unittest
 
-from contradictory_claims.claims.utils import read_json  # noqa: F401
+from contradictory_claims.extract_claims.utils import read_json  # noqa: F401
 
 
 class TestUtils(unittest.TestCase):
