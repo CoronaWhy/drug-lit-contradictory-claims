@@ -1,4 +1,4 @@
-"""Tests for making datasets for contradictory-claims."""
+"""Tests for preprocessing CORD-19 data."""
 
 # -*- coding: utf-8 -*-
 
@@ -9,10 +9,12 @@ import unittest
 import pandas as pd
 from contradictory_claims.data.preprocess_cord import clean_text, construct_regex_match_pattern,\
     extract_json_to_dataframe, extract_regex_pattern, filter_metadata_for_covid19
+#    filter_section_with_drugs, merge_section_text
 
 from .constants import pdf_filenames, pmc_filenames, pub_date_cutoff,\
-    sample_covid19_df_path, sample_json_temp_path, sample_json_text_file_dir,\
-    sample_metadata_path, sample_virus_lex_path
+    sample_conclusion_search_terms_path, sample_covid19_df_path, sample_json_temp_path,\
+    sample_json_text_file_dir, sample_metadata_path, sample_virus_lex_path
+
 
 
 class TestPreprocessCord(unittest.TestCase):
@@ -44,7 +46,7 @@ class TestPreprocessCord(unittest.TestCase):
 
     def test_construct_regex_match_pattern(self):
         """Test that regex pattern is constrcuted properly."""
-        regex_pattern = construct_regex_match_pattern(['conclusion', 'discussion'])
+        regex_pattern = construct_regex_match_pattern(sample_conclusion_search_terms_path)
         self.assertEqual(regex_pattern, '.*conclusion.*|.*discussion.*')
 
     def test_extract_regex_pattern(self):
@@ -62,3 +64,12 @@ class TestPreprocessCord(unittest.TestCase):
         covid19_df = pd.read_csv(sample_covid19_df_path)
         clean_df = clean_text(covid19_df)
         self.assertEqual(len(clean_df), 7)
+
+    def test_merge_section_text(self):
+        """Test that section text is merged properly."""
+        pass
+
+    def test_filter_section_with_drugs(self):
+        """Test that section filtering for drugs is performed properly."""
+        pass
+

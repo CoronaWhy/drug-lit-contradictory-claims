@@ -143,4 +143,7 @@ submit_train.sh
 biobert*
 wandb*
 tests/models/test_output/
+
+# tests/data/resources/cord19/extracted/document_parses/
+
 LOGFILE
