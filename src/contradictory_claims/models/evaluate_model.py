@@ -66,8 +66,6 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
         df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
                                                'predicted_ent': 'entailment',
                                                'predicted_neu': 'neutral'}, inplace=True)
-        #  DELETE ME!
-        df.to_csv("/Users/dnsosa/Desktop/AltmanLab/ContradictoryClaims/drug-lit-contradictory-claims/output/DF_OUT.csv")
     elif method == "binary":
         df.predicted_con = predictions[:, 0]
     else:
