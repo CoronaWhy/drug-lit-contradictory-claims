@@ -18,7 +18,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.command()
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--report/--no-report', 'report', default=False)
-def main(train, report):
+@click.option('--cord-version', 'cord_version', default='2020-08-10')
+def main(train, report, cord_version):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -32,13 +33,15 @@ def main(train, report):
     # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
     # metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
     # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
+    # metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
 
     # CORD-19 json files zip folder path
     # json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
     # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
+    # json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
-    # json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
+    # json_temp_path = os.path.join(root_dir, 'input', cord_version, 'extracted/')
 
     # CORD-19 publication cut off date
     # pub_date_cutoff = '2019-10-01'
