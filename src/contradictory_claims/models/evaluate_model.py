@@ -24,12 +24,12 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     :return: Pandas DataFrame containing data
     """
     df = pd.read_excel(data_path, sheet_name=active_sheet)
-    print(f"LENGTH OF DF: {len(df)}")  # noqa: T001
-    # DELETE ME:
-    drop_na = False
+    # NOTE: first column contains junk, so dropping it. If we change data schema need to change this
+    df = df.drop(df.columns[0], axis=1)
+    print(f"Length of DF: {len(df)}")  # noqa: T001
     if drop_na:
         df = df.dropna().reset_index(drop=True)
-        print(f"DROPPED NAs NOW LEN OF DF: {len(df)}")  # noqa: T001
+        print(f"Dropped NAs. Resulting length of DF: {len(df)}")  # noqa: T001
 
     return df
 

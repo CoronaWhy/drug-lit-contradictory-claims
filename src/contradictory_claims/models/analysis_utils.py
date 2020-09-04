@@ -4,6 +4,7 @@
 
 import datetime
 import os
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -19,7 +20,7 @@ import numpy as np
 # drug = "chloroquine"
 
 
-def dates_to_proportions(dates: list[str], date_format: str = '%m/%d/%y'):
+def dates_to_proportions(dates: List[str], date_format: str = '%m/%d/%y'):
     """
     Convert list of dates to positions on a timeline based on proportion of time passed.
 
@@ -36,11 +37,11 @@ def dates_to_proportions(dates: list[str], date_format: str = '%m/%d/%y'):
     return proportions
 
 
-def make_timeline_plot(names: list[str],
-                       dates: list[str],
-                       paper_titles: list[str],
-                       edges_comparisons: list[(str, str)],
-                       edges_comparisons_colors: list[str],
+def make_timeline_plot(names: List[str],
+                       dates: List[str],
+                       paper_titles: List[str],
+                       edges_comparisons: List[Tuple[str, str]],
+                       edges_comparisons_colors: List[str],
                        drug: str,
                        out_plot_dir: str,
                        date_format: str = '%m/%d/%y'):
