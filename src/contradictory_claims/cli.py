@@ -9,8 +9,11 @@ import click
 
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
-# from .data.preprocess_cord import clean_text, construct_regex_match_pattern, extract_json_to_dataframe,\
-#     extract_regex_pattern, filter_metadata_for_covid19
+from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
+    extract_section_from_text, filter_metadata_for_covid19,\
+    filter_section_with_drugs, merge_section_text
+from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
+    split_papers_on_claim_presence, tokenize_section_text
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -31,20 +34,20 @@ def main(train, report, cord_version):
 
     # CORD-19 metadata path
     # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
-    # metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
-    # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
-    # metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
+    metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+    metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
+    metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
 
     # CORD-19 json files zip folder path
-    # json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
-    # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
-    # json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
+    json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+    json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
+    json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
-    # json_temp_path = os.path.join(root_dir, 'input', cord_version, 'extracted/')
+    json_temp_path = os.path.join(root_dir, 'input', cord_version, 'extracted/')
 
     # CORD-19 publication cut off date
-    # pub_date_cutoff = '2019-10-01'
+    pub_date_cutoff = '2019-10-01'
 
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
     # directory structure and file names as follows.
@@ -63,43 +66,55 @@ def main(train, report, cord_version):
     # Other input paths
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
+    conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
 
     # Load and preprocess CORD-19 data
     # Extract names of files containing convid-19 synonymns in abstract/title
     # and published after a suitable cut-off date
-    # covid19_metadata = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
-    # pdf_filenames = list(covid19_metadata.pdf_json_files)
-    # pmc_filenames = list(covid19_metadata.pmc_json_files)
+    covid19_metadata = filter_metadata_for_covid19(metadata_path, virus_lex_path, pub_date_cutoff)
+    pdf_filenames = list(covid19_metadata.pdf_json_files)
+    pmc_filenames = list(covid19_metadata.pmc_json_files)
 
     # Extract full text for the files identified in previous step
     # NOTE: This seems to take a really long time, so I'm ommittng for now
-    # covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,
-    #                                        pdf_filenames, pmc_filenames)
-
-    # Construct regex match pattern for putative conclusion section headers
-    # search_terms = ['conclusion',
-    #                 'discussion',
-    #                 'interpretation',
-    #                 'added value of this study',
-    #                 'research in context',
-    #                 'concluding',
-    #                 'closing remarks',
-    #                 'summary of findings',
-    #                 'outcome']
-    # search_pattern = construct_regex_match_pattern(search_terms)
-
-    # Extract section headers for title\abstract\conclusion sections
-    # unique_sections = set(covid19_df.section.tolist())
-    # section_list = extract_regex_pattern(unique_sections, search_pattern)
-    # section_list = [i.lower() for i in section_list]
-    # section_list.append('abstract')
-    # section_list.append('title')
+    covid19_df = extract_json_to_dataframe(covid19_metadata, json_text_file_dir, json_temp_path,
+                                           pdf_filenames, pmc_filenames)
 
     # Extract title\abstract\conclusion sections from publication text
-    # covid19_filt_section_df = covid19_df.loc[covid19_df.section.str.lower().isin(section_list)]
+    covid19_filt_section_df = extract_section_from_text(conc_search_terms_path, covid19_df)
 
     # Clean the text to keep only meaningful sentences
-    # covid19_clean_df = clean_text(covid19_filt_section_df)  # noqa: F841
+    # and merge sentences belonging to each section of each paper into contiguous text passages
+    covid19_clean_df = clean_text(covid19_filt_section_df)
+
+    # Merge all sentences belonging to each section of each paper into contiguous text passages
+    covid19_merged_df = merge_section_text(covid19_clean_df)
+
+    # Filter to sections where section text contains drug terms
+    covid19_drugs_section_df = filter_section_with_drugs(covid19_merged_df,  # noqa: F841
+                                                         drug_lex_path)
+
+    # TODO: Replace with claim extraction code
+    claims_df = covid19_drugs_section_df
+
+    # Separate papers with at least 1 claim from those with no claims
+    claims_data, no_claims_data = split_papers_on_claim_presence(claims_df)
+
+    # For papers with no claims, tokenize section text to sentences
+    # and append to claims
+    # This is because when no claims are identified, we want to consider all sentences
+    # rather than ignoring the paper altogether
+    no_claims_data = tokenize_section_text(no_claims_data)
+    claims_data = claims_data.append(no_claims_data).reset_index(drop=True)
+
+    # Initialize scispacy nlp object and add virus terms to the vocabulary
+    nlp = initialize_nlp(virus_lex_path)
+
+    # Pair similar claims
+    claims_paired_df = pair_similar_claims(claims_data, nlp)
+
+    # Add paper publish time and title info
+    claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
     if train:
         # Load BERT train and test data
