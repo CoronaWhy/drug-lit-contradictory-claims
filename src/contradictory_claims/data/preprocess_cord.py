@@ -9,7 +9,7 @@ from typing import List
 from zipfile import ZipFile
 
 import pandas as pd
-from pandas.io.json import json_normalize
+# from pandas.io.json import json_normalize
 
 
 def construct_regex_match_pattern(search_terms_file_path: str, search_type: str = 'fuzzy'):
@@ -124,7 +124,7 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                     # Parse the json string into the json dictionary format
                     json_dict = json.loads(json_str, encoding='utf8')
                     # Convert the json dictionary object to a pandas dataframe
-                    paper_df = json_normalize(json_dict)
+                    paper_df = pd.json_normalize(json_dict)
                     # In the covid19 metadata dataframe,
                     # filter to the row representing the current json file being processed
                     # and extract the cord_uid
