@@ -23,7 +23,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--extract/--no-extract', 'extract', default=False)
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--report/--no-report', 'report', default=False)
-def main(extract, train, report):
+@click.option('--cord-version', 'cord_version', default='2020-08-10')
+def main(extract, train, report, cord_version):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -34,13 +35,17 @@ def main(extract, train, report):
     trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
 
     # CORD-19 metadata path
-    metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+    # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
+    # metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
+    # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
+    metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
 
-    # CORD-19 json files zip folder path
-    json_text_file_dir = os.path.join(root_dir, 'input/cord19/document_parses.zip')
+    # json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
+    # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
+    json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
-    json_temp_path = os.path.join(root_dir, 'input/cord19/extracted/')
+    json_temp_path = os.path.join(root_dir, 'input', cord_version, 'extracted/')
 
     # CORD-19 publication cut off date
     pub_date_cutoff = '2019-10-01'
@@ -147,16 +152,18 @@ def main(extract, train, report):
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
-        eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
-        active_sheet = "drug_individual_claims_similari"
+        # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
+        # active_sheet = "drug_individual_claims_similari"
+        eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
+        active_sheet = "All_phase2"
         eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name)
 
         # Now create the report
-        out_report_file = os.path.join(trained_model_out_dir, "results_report.txt")
-        create_report(eval_data, model_id=model_id, out_report_file=out_report_file, out_plot_dir=trained_model_out_dir)
+        out_report_dir = os.path.join(trained_model_out_dir)
+        create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir, out_plot_dir=trained_model_out_dir)
 
 
 if __name__ == '__main__':

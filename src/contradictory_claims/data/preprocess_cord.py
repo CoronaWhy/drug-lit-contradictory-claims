@@ -10,7 +10,7 @@ from typing import List
 from zipfile import ZipFile
 
 import pandas as pd
-from pandas.io.json import json_normalize
+# from pandas.io.json import json_normalize
 
 
 def construct_regex_match_pattern(search_terms_file_path: str, search_type: str = 'fuzzy'):
@@ -31,14 +31,12 @@ def construct_regex_match_pattern(search_terms_file_path: str, search_type: str 
 
     elif search_type == 'flank_white_space':
         exact_pattern = '\W' + '\W|\W'.join([i.lower() for i in search_terms]) + '\W'  # noqa: W605
-
         return exact_pattern
 
     else:
         # TODO: fix flake8 error code FS001
         fuzzy_terms = ['.*%s.*' % i.lower() for i in search_terms]  # noqa: FS001
         fuzzy_pattern = '|'.join(fuzzy_terms)
-
         return fuzzy_pattern
 
 
@@ -169,6 +167,7 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                                        'section': section}
                     k = k + 1
 
+
 #        if iter_num%100==0:
 #            print('Number of files read:', iter_num+1)
 
@@ -219,6 +218,7 @@ def clean_text(input_data: pd.DataFrame):
     Filter text to keep only sentences containing at least 3 meaningful words.
 
     :param input_data: pandas dataframe with publication text
+
     :return: Clean dataframe
     """
     # List of words-to-ignore
