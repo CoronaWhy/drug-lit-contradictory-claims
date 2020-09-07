@@ -30,14 +30,12 @@ def construct_regex_match_pattern(search_terms_file_path: str, search_type: str 
 
     elif search_type == 'flank_white_space':
         exact_pattern = '\W' + '\W|\W'.join([i.lower() for i in search_terms]) + '\W'  # noqa: W605
-
         return exact_pattern
 
     else:
         # TODO: fix flake8 error code FS001
         fuzzy_terms = ['.*%s.*' % i.lower() for i in search_terms]  # noqa: FS001
         fuzzy_pattern = '|'.join(fuzzy_terms)
-
         return fuzzy_pattern
 
 
@@ -209,6 +207,7 @@ def clean_text(input_data: pd.DataFrame):
     Filter text to keep only sentences containing at least 3 meaningful words.
 
     :param input_data: pandas dataframe with publication text
+
     :return: Clean dataframe
     """
     # List of words-to-ignore

@@ -15,6 +15,7 @@ Welcome to contradictory-claims's documentation!
    train_model
    evaluate_model
    cli
+   extract_claims
 
 .. Indices and tables
 .. ==================
