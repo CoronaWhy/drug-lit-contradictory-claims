@@ -12,7 +12,6 @@ install:
 # taking long to build, it now has a wait time of 20 mins before it will stop
 
 script:
-
   - travis_wait tox -r
 
 after_success:
