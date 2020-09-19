@@ -5,3 +5,4 @@
 from .data.make_dataset import *  # noqa:F401,F403
 #  from .models import train_model  # noqa:F401
 from .models.train_model import *  # noqa:F401,F403
+from .models.sbert_models import train_sbert_model  # noqa:F401
