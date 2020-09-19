@@ -160,39 +160,10 @@ def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     x_df["sentence2"] = x_df["sentences"].apply(lambda x: x.split("[SEP]")[-1])
     x_df.drop(["sentences"], axis=1, inplace=True)
     y_transformed = np.argmax(y, axis=1)
-    # {"contradiction": 2, "entailment": 1, "neutral": 0}, 
+    # {"contradiction": 2, "entailment": 1, "neutral": 0},
     # for sbert need to change this to entail:2, contra:0, neut:1
     y_df = pd.DataFrame(y_transformed, columns=["label"])
-    convert_dict = {0:1, 1:2, 2:0}
-    y_df["label"] = y_df["label"].apply(lambda x:convert_dict[x]).astype(int)
+    convert_dict = {0: 1, 1: 2, 2: 0}
+    y_df["label"] = y_df["label"].apply(lambda x: convert_dict[x]).astype(int)
     df = pd.concat([x_df, y_df], axis=1)
     return df
-
-
-def siamese_format_sbert_input(data_type: str = "multi_nli",
-                               train_path: str = None,
-                               test_path: str = None,
-                               dev_path: str = None):
-    """Convert output to format accepted by SBERT DataLoader.
-
-    :param data_type: supported type are "multi_nli", "med_nli", "mancon"
-    :param train_path: path to train file
-    :param test_path: path to test file
-
-    :return: df_train, df_test which contains sentence and labels as columns
-    """
-
-    if data_type == "multi_nli":
-        x_train, y_train, x_test, y_test = load_multi_nli(train_path, test_path)
-        df_train = remove_tokens_get_sentence_sbert(x_train, y_train)
-        df_test = remove_tokens_get_sentence_sbert(x_test, y_test)
-    elif data_type == "med_nli":
-        x_train, y_train, x_test, y_test = load_med_nli(train_path, dev_path, test_path)
-        df_train = remove_tokens_get_sentence_sbert(x_train, y_train)
-        df_test = remove_tokens_get_sentence_sbert(x_test, y_test)
-    elif data_type == "mancon":
-        x_train, y_train, x_test, y_test = load_mancon_corpus_from_sent_pairs(train_path)
-        df_train = remove_tokens_get_sentence_sbert(x_train, y_train)
-        df_test = remove_tokens_get_sentence_sbert(x_test, y_test)
-
-    return df_train, df_test
