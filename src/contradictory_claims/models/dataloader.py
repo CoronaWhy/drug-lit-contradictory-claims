@@ -1,16 +1,16 @@
-"""DataLoader and Dataclasses classes required for required for SBERT"""
+"""DataLoader and Dataclasses classes required for required for SBERT."""
 
 from collections import Counter
 
 import torch
 from torch.utils.data import Dataset
-from sentence_transformers.readers import InputExample
 
 
 class ClassifierDataset(Dataset):
+    """ The Dataset Class used for classification task using SBERT model."""
 
     def __init__(self, dataframe, tokenizer):
-        """Initializer for Classifier Dataset
+        """Initializer for Classifier Dataset.
 
         :param dataframe: The dataframe containing the NLI data
         :type dataframe: Pandas DataFrame
@@ -23,6 +23,12 @@ class ClassifierDataset(Dataset):
         self.tokenizer = tokenizer
 
     def __getitem__(self, index):
+        """Get item method.
+
+        :param index: index number from dataloader function.
+        :type index: int
+        :return: sentence1,sentence2,label
+        """
         return (self.tokenized(self.sentence1[index])), (self.tokenized(self.sentence2[index])), self.label[index]
 
     def tokenized(self, text):
@@ -39,7 +45,7 @@ class ClassifierDataset(Dataset):
                                           truncation=True)["input_ids"]
 
     def class_weight(self):
-        """Returns the class weights to tackle skewness in data while training.
+        """Return the class weights to tackle skewness in data while training.
 
         :return: torch tensor of weights
         :rtype: torch.tensor
@@ -49,41 +55,17 @@ class ClassifierDataset(Dataset):
         class_count = [count_dict[i] for i in range(3)]
         class_weights = len(target_list) / torch.tensor(class_count, dtype=torch.float)
         class_weights = class_weights / class_weights.sum()
-        print(class_weights)
+        print(class_weights)  # noqa: T001
         return class_weights
 
     @staticmethod
     def get_labels():
-        return {"contradiction": 0, "neutral": 2, "entailment": 1}
+        """get class label dictionary."""
+        return {"contradiction": 0, "neutral": 1, "entailment": 2}
 
     def __len__(self):
+        """Return length of Dataset."""
         return len(self.label)
-
-
-class NLIDataReader(object):
-    def __init__(self, dataframe):
-        self.df = dataframe.copy()
-
-    def get_examples(self, max_examples: int = None):
-        if max_examples is None:
-            max_examples = self.df.shape[0]
-        s1 = self.df["sentence1"].iloc[:max_examples].values
-        s2 = self.df["sentence2"].iloc[:max_examples].values
-        labels = self.df["label"].astype(int).iloc[:max_examples].values
-        examples = []
-        for guid_id, (sentence_a, sentence_b, label) in enumerate(zip(s1, s2, labels)):
-            examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=label))
-        return examples
-
-    @staticmethod
-    def get_labels():
-        return {"contradiction": 0, "entailment": 2, "neutral": 1}
-
-    def get_num_labels(self):
-        return len(self.get_labels())
-
-    def map_label(self, label):
-        return self.get_labels()[label.strip().lower()]
 
 
 def multi_acc(y_pred: torch.tensor, y_test: torch.tensor):
