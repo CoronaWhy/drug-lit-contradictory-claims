@@ -1,4 +1,4 @@
-"""Functions for building, saving, loading, and training the contradictory claims Transformer model."""
+"""Functions for building, saving, loading, and training the contradictory claims Transformer model based on biomed_roberta_base."""
 
 # -*- coding: utf-8 -*-
 
@@ -134,6 +134,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 continue_fine_tuning: bool = False,
                 model_continue_sigmoid_path: str = None,
                 model_continue_transformer_path: str = None,
+				use_multi_nli: bool = True,
                 use_med_nli: bool = True,
                 use_man_con: bool = True,
                 epochs: int = 3,
@@ -248,15 +249,16 @@ def train_model(multi_nli_train_x: np.ndarray,
     wandb.init(dir="./wandb_artifacts")
 
     # Fine tune on MultiNLI
-    train_history = model.fit(multi_nli_train_x,
-                              multi_nli_train_y,
-                              batch_size=batch_size,
-                              validation_data=(multi_nli_test_x, multi_nli_test_y),
-                              callbacks=[es, WandbCallback()],
-                              epochs=epochs)
+	if use_multi_nli:
+		train_history = model.fit(multi_nli_train_x,
+								  multi_nli_train_y,
+								  batch_size=batch_size,
+								  validation_data=(multi_nli_test_x, multi_nli_test_y),
+								  callbacks=[es, WandbCallback()],
+								  epochs=epochs)
 
-    print("passed the multiNLI train. Now the history:")  # noqa: T001
-    print(train_history)  # noqa: T001
+		print("passed the multiNLI train. Now the history:")  # noqa: T001
+		print(train_history)  # noqa: T001
 
     # Fine tune on MedNLI
     if use_med_nli:
