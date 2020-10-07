@@ -15,10 +15,9 @@ from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     filter_section_with_drugs, merge_section_text
 from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
+from .models.bluebert_train_model import bluebert_create_model, bluebert_create_train_model
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
-from .models.bluebert_train_model import bluebert_create_model, bluebert_create_train_model,\
-	bluebert_train_model
 
 
 @click.command()
@@ -32,7 +31,7 @@ def main(extract, train, bluebert_train, report, cord_version):
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
     model_id = "biomed_roberta"
-	bluebert_pretrained_path = ""
+    bluebert_pretrained_path = ""
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
@@ -154,8 +153,8 @@ def main(extract, train, bluebert_train, report, cord_version):
         pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
         trained_model = load_model(pickle_file, transformer_dir)
 
-	if bluebert_train:
-		# Load BERT train and test data
+    if bluebert_train:
+        # Load BERT train and test data
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
             load_multi_nli(multinli_train_path, multinli_test_path)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
@@ -164,14 +163,16 @@ def main(extract, train, bluebert_train, report, cord_version):
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
-		# Train model
+        # Train model
         bluebert_trained_model = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
-															multi_nli_test_x, multi_nli_test_y,
-															med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y,
-															man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y,
-															bluebert_pretrained_path)
-	else:
-		bluebert_trained_model, _ = bluebert_create_model(bluebert_pretrained_path)
+                                                             multi_nli_test_x, multi_nli_test_y,
+                                                             med_nli_train_x, med_nli_train_y,
+                                                             med_nli_test_x, med_nli_test_y,
+                                                             man_con_train_x, man_con_train_y,
+                                                             man_con_test_x, man_con_test_y,
+                                                             bluebert_pretrained_path)
+    else:
+        bluebert_trained_model, _ = bluebert_create_model(bluebert_pretrained_path)
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
