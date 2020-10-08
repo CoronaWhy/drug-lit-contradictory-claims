@@ -7,9 +7,9 @@ import shutil
 import numpy as np
 import torch
 import wget
+import torch.optim as optim
 from sentence_transformers import SentenceTransformer
 from sentence_transformers import models
-import torch.optim as optim
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
