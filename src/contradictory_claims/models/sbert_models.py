@@ -6,10 +6,10 @@ import shutil
 
 import numpy as np
 import torch
+import torch.optim as optim
 import wget
 from sentence_transformers import SentenceTransformer
 from sentence_transformers import models
-import torch.optim as optim
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -156,6 +156,14 @@ def train_sbert_model(model_name,
                       multi_nli_train_y: np.ndarray = None,
                       multi_nli_test_x: np.ndarray = None,
                       multi_nli_test_y: np.ndarray = None,
+                      med_nli_train_x: np.ndarray = None,
+                      med_nli_train_y: np.ndarray = None,
+                      med_nli_test_x: np.ndarray = None,
+                      med_nli_test_y: np.ndarray = None,
+                      man_con_train_y: np.ndarray = None,
+                      man_con_train_x: np.ndarray = None,
+                      man_con_test_x: np.ndarray = None,
+                      man_con_test_y: np.ndarray = None,
                       batch_size: int = 2,
                       num_epochs: int = 1,
                       ):
@@ -212,8 +220,44 @@ def train_sbert_model(model_name,
     if multi_nli:
         if multi_nli_train_x is not None:
 
-            df_mancon_train = remove_tokens_get_sentence_sbert(multi_nli_train_x, multi_nli_train_y)
-            df_mancon_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
+            df_multi_train = remove_tokens_get_sentence_sbert(multi_nli_train_x, multi_nli_train_y)
+            df_multi_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
+
+            multi_train_dataset = ClassifierDataset(df_multi_train, tokenizer=covid_ert_tokenizer)
+            multi_val_dataset = ClassifierDataset(df_multi_val, tokenizer=covid_ert_tokenizer)
+
+            class_weights = multi_train_dataset.class_weights
+
+            train_loader = DataLoader(dataset=multi_train_dataset,
+                                      batch_size=batch_size, collate_fn=collate_fn)
+            val_loader = DataLoader(dataset=multi_val_dataset, batch_size=1, collate_fn=collate_fn)
+
+            trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
+                    class_weights=class_weights, batch_size=batch_size, epochs=num_epochs)
+
+    if med_nli:
+        if med_nli_train_x is not None:
+
+            df_mednli_train = remove_tokens_get_sentence_sbert(med_nli_train_x, med_nli_train_y)
+            df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
+
+            mednli_train_dataset = ClassifierDataset(df_mednli_train, tokenizer=covid_ert_tokenizer)
+            mednli_val_dataset = ClassifierDataset(df_mednli_val, tokenizer=covid_ert_tokenizer)
+
+            class_weights = mednli_train_dataset.class_weights
+
+            train_loader = DataLoader(dataset=mednli_train_dataset,
+                                      batch_size=batch_size, collate_fn=collate_fn)
+            val_loader = DataLoader(dataset=mednli_val_dataset, batch_size=1, collate_fn=collate_fn)
+
+            trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
+                    class_weights=class_weights, batch_size=batch_size, epochs=num_epochs)
+
+    if mancon_corpus:
+        if man_con_train_x is not None:
+
+            df_mancon_train = remove_tokens_get_sentence_sbert(man_con_train_x, man_con_train_y)
+            df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
             mancon_train_dataset = ClassifierDataset(df_mancon_train, tokenizer=covid_ert_tokenizer)
             mancon_val_dataset = ClassifierDataset(df_mancon_val, tokenizer=covid_ert_tokenizer)
