@@ -6,8 +6,8 @@ import shutil
 
 import numpy as np
 import torch
-import wget
 import torch.optim as optim
+import wget
 from sentence_transformers import SentenceTransformer
 from sentence_transformers import models
 from torch import nn
