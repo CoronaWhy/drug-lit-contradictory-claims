@@ -9,8 +9,11 @@ python: "3.8"
 install:
   - pip install -U pip wheel
   - pip install tox codecov
+# taking long to build, it now has a wait time of 20 mins before it will stop
+
 script:
-  - tox -r
+  - travis_wait tox -r
+
 after_success:
   - tox -e coverage-report
   - codecov

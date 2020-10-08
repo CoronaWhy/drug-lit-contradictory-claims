@@ -4,12 +4,13 @@
 
 import json
 import re
+import tarfile
 from datetime import datetime
 from typing import List
 from zipfile import ZipFile
 
 import pandas as pd
-from pandas.io.json import json_normalize
+# from pandas.io.json import json_normalize
 
 
 def construct_regex_match_pattern(search_terms_file_path: str, search_type: str = 'fuzzy'):
@@ -30,14 +31,12 @@ def construct_regex_match_pattern(search_terms_file_path: str, search_type: str 
 
     elif search_type == 'flank_white_space':
         exact_pattern = '\W' + '\W|\W'.join([i.lower() for i in search_terms]) + '\W'  # noqa: W605
-
         return exact_pattern
 
     else:
         # TODO: fix flake8 error code FS001
         fuzzy_terms = ['.*%s.*' % i.lower() for i in search_terms]  # noqa: FS001
         fuzzy_pattern = '|'.join(fuzzy_terms)
-
         return fuzzy_pattern
 
 
@@ -106,61 +105,71 @@ def extract_json_to_dataframe(covid19_metadata: pd.DataFrame,
                     'â€¢': '-',
                     'â€¦': '…'}
 
-    # TODO: Parallelize the code below
-    with ZipFile(json_text_file_dir, 'r') as zipobj:
+    if '.zip' in json_text_file_dir:
+        zipobj = ZipFile(json_text_file_dir, 'r')
         list_of_filenames = zipobj.namelist()
-        # print('Number of files to iterate over:',len(list_of_filenames))
-        k = 0
-        # iter_num = 0
-        for filename in list_of_filenames:
-            # iter_num = iter_num + 1
-            # Check filename ends with json and file exists in filtered list of cord papers
-            if (filename in pdf_filenames) or (filename in pmc_filenames):
+    elif 'tar.gz' in json_text_file_dir:
+        tarf = tarfile.open(json_text_file_dir, 'r:gz')
+        list_of_filenames = tarf.getnames()
+    else:
+        raise Exception("Incorrcet file extension. Must be '.zip' or '.tar.gz'")
+    # print('Number of files to iterate over:',len(list_of_filenames))
+    k = 0
+    # TODO: Parallelize the code below
+    for iter_num, filename in enumerate(list_of_filenames):
+        # Check filename ends with json and file exists in filtered list of cord papers
+        if (filename in pdf_filenames) or (filename in pmc_filenames):
+            if '.zip' in json_text_file_dir:
                 zipobj.extract(filename, json_temp_path)
-                with open(json_temp_path + filename, 'r', encoding='utf8') as f:
-                    # Read each line in the file separately, remove tabs, spaces and newlines
-                    # and concatenate all lines together for further parsing
-                    json_str = "".join([" ".join(line.split()) for line in f])
-                    # Parse the json string into the json dictionary format
-                    json_dict = json.loads(json_str, encoding='utf8')
-                    # Convert the json dictionary object to a pandas dataframe
-                    paper_df = json_normalize(json_dict)
-                    # In the covid19 metadata dataframe,
-                    # filter to the row representing the current json file being processed
-                    # and extract the cord_uid
-                    check_file_name = ((filename == covid19_metadata.pdf_json_files)
-                                       | (filename == covid19_metadata.pmc_json_files))  # noqa: W503
-                    cord_uid = list(covid19_metadata.loc[check_file_name, 'cord_uid'])[0]
-                    # If an abstract section exists, extract the text
-                    try:
-                        text = paper_df['abstract'][0][0]['text']
-                        section = paper_df['abstract'][0][0]['section']
-                        # Replace characters with their readable format
-                        for key, v in replace_dict.items():
-                            text = text.replace(key, v)
-                            section = section.replace(key, v)
-                        covid19_dict[k] = {'cord_uid': cord_uid,
-                                           'sentence': text,
-                                           'section': section}
-                        k = k + 1
-                    # If an abstract section does not exist, skip
-                    except KeyError:
-                        pass
+            elif 'tar.gz' in json_text_file_dir:
+                tarf.extract(tarf.getmembers()[iter_num], json_temp_path)
+            with open(json_temp_path + filename, 'r', encoding='utf8') as f:
+                # Read each line in the file separately, remove tabs, spaces and newlines
+                # and concatenate all lines together for further parsing
+                json_str = "".join([" ".join(line.split()) for line in f])
+                # Parse the json string into the json dictionary format
+                json_dict = json.loads(json_str, encoding='utf8')
+                # Convert the json dictionary object to a pandas dataframe
+                paper_df = pd.json_normalize(json_dict)
+                # In the covid19 metadata dataframe,
+                # filter to the row representing the current json file being processed
+                # and extract the cord_uid
+                check_file_name = ((filename == covid19_metadata.pdf_json_files)
+                                   | (filename == covid19_metadata.pmc_json_files))  # noqa: W503
+                cord_uid = list(covid19_metadata.loc[check_file_name, 'cord_uid'])[0]
+                # If an abstract section exists, extract the text
+                try:
+                    text = paper_df['abstract'][0][0]['text']
+                    section = paper_df['abstract'][0][0]['section']
+                    # Replace characters with their readable format
+                    for key, v in replace_dict.items():
+                        text = text.replace(key, v)
+                        section = section.replace(key, v)
+                    covid19_dict[k] = {'cord_uid': cord_uid,
+                                       'sentence': text,
+                                       'section': section}
+                    k = k + 1
+                # If an abstract section does not exist, skip
+                except KeyError:
+                    pass
+                except IndexError:
+                    pass
 
-                    for temp_dict in paper_df['body_text'][0]:
-                        text = temp_dict['text']
-                        section = temp_dict['section']
-                        # Replace characters with their readable format
-                        for key, v in replace_dict.items():
-                            text = text.replace(key, v)
-                            section = section.replace(key, v)
-                        covid19_dict[k] = {'cord_uid': cord_uid,
-                                           'sentence': text,
-                                           'section': section}
-                        k = k + 1
+                for temp_dict in paper_df['body_text'][0]:
+                    text = temp_dict['text']
+                    section = temp_dict['section']
+                    # Replace characters with their readable format
+                    for key, v in replace_dict.items():
+                        text = text.replace(key, v)
+                        section = section.replace(key, v)
+                    covid19_dict[k] = {'cord_uid': cord_uid,
+                                       'sentence': text,
+                                       'section': section}
+                    k = k + 1
+
 
 #        if iter_num%100==0:
-#            print('Number of files read:', iter_num)
+#            print('Number of files read:', iter_num+1)
 
     return pd.DataFrame.from_dict(covid19_dict, orient='index')
 
@@ -209,6 +218,7 @@ def clean_text(input_data: pd.DataFrame):
     Filter text to keep only sentences containing at least 3 meaningful words.
 
     :param input_data: pandas dataframe with publication text
+
     :return: Clean dataframe
     """
     # List of words-to-ignore
@@ -282,3 +292,5 @@ def filter_section_with_drugs(input_data: pd.DataFrame, drug_lex_path: str):
     for index, row in drugs_section_df.iterrows():
         drugs_used = [drug for drug in drug_terms if drug in row.text]
         drugs_section_df.at[index, 'drug_terms_used'] = ','.join(drugs_used)
+
+    return drugs_section_df
