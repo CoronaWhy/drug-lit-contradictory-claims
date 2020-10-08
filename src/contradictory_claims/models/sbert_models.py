@@ -5,22 +5,22 @@ import os
 import shutil
 
 import numpy as np
-from sentence_transformers import models
-from sentence_transformers import SentenceTransformer
 import torch
+import wget
+from sentence_transformers import SentenceTransformer
+from sentence_transformers import models
 import torch.optim as optim
 from torch import nn
 from torch.utils.data import DataLoader
-from transformers import BertModel, BertTokenizer
 from tqdm import tqdm
-import wget
+from transformers import BertModel, BertTokenizer
 
-from .dataloader import collate_fn, multi_acc
 from .dataloader import ClassifierDataset
+from .dataloader import collate_fn, multi_acc
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
 
-class SBERT_Predictor(SentenceTransformer):
+class SBERTPredictor(SentenceTransformer):
     """SBERT Prediction class."""
 
     def __init__(self,
@@ -28,7 +28,7 @@ class SBERT_Predictor(SentenceTransformer):
                  pooling_model,
                  num_classes: int = 3,
                  device: str = None):
-        """Initializer class.
+        """Initialize the class.
 
         :param word_embedding_model: the rod embedding model
         :param pooling_model: the pooling model
@@ -48,7 +48,7 @@ class SBERT_Predictor(SentenceTransformer):
         self.to(self._target_device)
 
     def forward(self, sentence1, sentence2):
-        """[summary]
+        """Forward function.
 
         :param sentence1: batch of sentence1
         :param sentence2: batch of sentence2
@@ -66,7 +66,7 @@ class SBERT_Predictor(SentenceTransformer):
         return h_out
 
 
-def trainer(model: SBERT_Predictor,
+def trainer(model: SBERTPredictor,
             train_dataloader: ClassifierDataset,
             val_dataloader: ClassifierDataset,
             class_weights: torch.tensor,
@@ -93,10 +93,10 @@ def trainer(model: SBERT_Predictor,
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.to(device)
     accuracy_stats = {"train": [],
-                      "val": []
+                      "val": [],
                       }
     loss_stats = {"train": [],
-                  "val": []
+                  "val": [],
                   }
 
     print("------TRAINING STARTS----------")  # noqa: T001
@@ -143,7 +143,7 @@ def trainer(model: SBERT_Predictor,
         print(f"Epoch {e+0:03}: | Train Loss: {train_epoch_loss/len(train_dataloader):.5f} \
             | Val Loss: {val_epoch_loss / len(val_dataloader):.5f} \
             | Train Acc: {train_epoch_acc/len(train_dataloader):.3f} \
-            | Val Acc: {val_epoch_acc/len(val_dataloader):.3f}")
+            | Val Acc: {val_epoch_acc/len(val_dataloader):.3f}")  # noqa: T001
 
     print("---------TRAINING ENDED------------")  # noqa: T001
 
@@ -159,7 +159,7 @@ def train_sbert_model(model_name,
                       batch_size: int = 2,
                       num_epochs: int = 1,
                       ):
-    """Module to train SBERT on any NLI dataset
+    """Train SBERT on any NLI dataset.
 
     :param model_name: model to be used, currently supported: deepset/covid_bert_base or biobert
     :param mancon_corpus: [description], defaults to False
@@ -208,7 +208,7 @@ def train_sbert_model(model_name,
                                    pooling_mode_cls_token=True,
                                    pooling_mode_max_tokens=True)
     # generating biobert sentence embeddings (mean pooling of sentence embedding vectors)
-    sbert_model = SBERT_Predictor(word_embedding_model, pooling_model)
+    sbert_model = SBERTPredictor(word_embedding_model, pooling_model)
     if multi_nli:
         if multi_nli_train_x is not None:
 
