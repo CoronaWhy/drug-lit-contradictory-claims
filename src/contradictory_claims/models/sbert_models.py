@@ -1,19 +1,19 @@
 """General module to help train SBERT for NLI tasks."""
 
 
-import shutil
 import os
-import wget
+import shutil
 
 import numpy as np
-import torch
-from torch import nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from transformers import BertModel, BertTokenizer
 from sentence_transformers import models
 from sentence_transformers import SentenceTransformer
+import torch
+import torch.optim as optim
+from torch import nn
+from torch.utils.data import DataLoader
+from transformers import BertModel, BertTokenizer
 from tqdm import tqdm
+import wget
 
 from .dataloader import collate_fn, multi_acc
 from .dataloader import ClassifierDataset
@@ -21,11 +21,21 @@ from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
 
 class SBERT_Predictor(SentenceTransformer):
+    """SBERT Prediction class."""
+
     def __init__(self,
                  word_embedding_model,
                  pooling_model,
                  num_classes: int = 3,
                  device: str = None):
+        """Initializer class.
+
+        :param word_embedding_model: the rod embedding model
+        :param pooling_model: the pooling model
+        :param num_classes: number of classes in output, defaults to 3
+        :param device: device type (cuda/cpu)
+        :type device: str, optional
+        """
         super().__init__()
         self.embedding_model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
         self.linear = nn.Linear(6912, num_classes)
@@ -38,6 +48,13 @@ class SBERT_Predictor(SentenceTransformer):
         self.to(self._target_device)
 
     def forward(self, sentence1, sentence2):
+        """[summary]
+
+        :param sentence1: batch of sentence1
+        :param sentence2: batch of sentence2
+        :return: sigmoid output
+        :rtype: torch.Tensor
+        """
         sentence1_embedding = torch.tensor(self.embedding_model.encode(sentence1, is_pretokenized=True),
                                            device=self._target_device).reshape(-1, 2304)
         sentence2_embedding = torch.tensor(self.embedding_model.encode(sentence2, is_pretokenized=True),
@@ -142,6 +159,30 @@ def train_sbert_model(model_name,
                       batch_size: int = 2,
                       num_epochs: int = 1,
                       ):
+    """Module to train SBERT on any NLI dataset
+
+    :param model_name: model to be used, currently supported: deepset/covid_bert_base or biobert
+    :param mancon_corpus: [description], defaults to False
+    :type mancon_corpus: bool, optional
+    :param med_nli: [description], defaults to False
+    :type med_nli: bool, optional
+    :param multi_nli: [description], defaults to False
+    :type multi_nli: bool, optional
+    :param multi_nli_train_x: [description], defaults to None
+    :type multi_nli_train_x: np.ndarray, optional
+    :param multi_nli_train_y: [description], defaults to None
+    :type multi_nli_train_y: np.ndarray, optional
+    :param multi_nli_test_x: [description], defaults to None
+    :type multi_nli_test_x: np.ndarray, optional
+    :param multi_nli_test_y: [description], defaults to None
+    :type multi_nli_test_y: np.ndarray, optional
+    :param batch_size: [description], defaults to 2
+    :type batch_size: int, optional
+    :param num_epochs: [description], defaults to 1
+    :type num_epochs: int, optional
+    :return: [description]
+    :rtype: [type]
+    """
     if models == "deepset/covid_bert_base":
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path

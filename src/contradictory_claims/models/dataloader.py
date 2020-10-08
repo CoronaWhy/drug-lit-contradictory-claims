@@ -7,10 +7,10 @@ from torch.utils.data import Dataset
 
 
 class ClassifierDataset(Dataset):
-    """ The Dataset Class used for classification task using SBERT model."""
+    """The Dataset Class used for classification task using SBERT model."""
 
     def __init__(self, dataframe, tokenizer):
-        """Initializer for Classifier Dataset.
+        """Initialize Classifier Dataset.
 
         :param dataframe: The dataframe containing the NLI data
         :type dataframe: Pandas DataFrame
@@ -60,7 +60,7 @@ class ClassifierDataset(Dataset):
 
     @staticmethod
     def get_labels():
-        """get class label dictionary."""
+        """Get class label dictionary."""
         return {"contradiction": 0, "neutral": 1, "entailment": 2}
 
     def __len__(self):
@@ -87,7 +87,7 @@ def multi_acc(y_pred: torch.tensor, y_test: torch.tensor):
 
 
 def collate_fn(batch):
-    """Collate function used for Dataloader
+    """Collate function used for Dataloader.
 
     :param batch: Dataloader sends a batch of items
     :return: modified batch
