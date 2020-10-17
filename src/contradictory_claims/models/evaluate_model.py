@@ -97,6 +97,7 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
 
     # dictionary_mapping = ClassifierDataset.get_mappings()
     labels = ClassifierDataset.get_labels()
+    predictions = predictions.to("cpu").numpy()
     df['predicted_con'] = predictions[:, labels['contradiction']]
     df['predicted_ent'] = predictions[:, labels['entailment']]
     df['predicted_neu'] = predictions[:, labels['neutral']]
