@@ -5,28 +5,31 @@
 from itertools import combinations
 
 # import en_core_sci_lg
-import pandas as pd
-import spacy
-from nltk import sent_tokenize
-from numba import jit
-# import scispacy
-from scispacy.abbreviation import AbbreviationDetector
-from scispacy.umls_linking import UmlsEntityLinker
-from sklearn.metrics.pairwise import cosine_similarity
+import nltk
+nltk.download('punkt')
+import pandas as pd  # noqa: E402
+import spacy  # noqa: E402
+from nltk import sent_tokenize  # noqa: E402
+from numba import jit  # noqa: E402
+# import scispacy  # noqa: F401
+from scispacy.abbreviation import AbbreviationDetector  # noqa: E402
+from scispacy.umls_linking import UmlsEntityLinker  # noqa: E402
+from sklearn.metrics.pairwise import cosine_similarity  # noqa: E402
 # from spacy.vocab import Vocab
 
 
-def initialize_nlp(virus_lex_path: str):
+def initialize_nlp(virus_lex_path: str, scispacy_model_name: str = "en_core_sci_lg"):
     """
     Initialize scispacy nlp object and virus terms to the vocabulary.
 
     :param virus_lex_path: path to virus lexicon
+    :param scispacy_model_name: name of scispacy model to use for w2v vectors
     :return: Scispacy nlp object
     """
     # Load the scispacy large model
     # nlp = en_core_sci_lg.load(disable='parser')
     # I believe this should work, I wonder if it's not recommended for  memory reasons though in a v env like Travis...
-    nlp = spacy.load("en_core_sci_lg")
+    nlp = spacy.load(scispacy_model_name, disable='parser')
     # Enable umls entity detection and abbreviation detection
     linker = UmlsEntityLinker(resolve_abbreviations=True)
     nlp.add_pipe(linker)
@@ -114,14 +117,22 @@ def pair_similar_claims(claims_data: pd.DataFrame, nlp):
     # Add a new column for storing the drug terms present in each claim
     claims_data['drug_terms_mention'] = [[d for d in drug_terms if d in c] for c in claims_data.claims]
 
-    # Pair all claims
-    paper_pairs = list(combinations(claims_data.index, 2))
+    drug_terms_mentions_flat = [d for d_list in claims_data['drug_terms_mention'] for d in d_list]
+    drug_terms_mentions_flat = list(set(drug_terms_mentions_flat))
+
     paper_pairs_filt = []
-    # Filter to claim pairs that come from different papers and have at least 1 drug term in common
-    for i, j in paper_pairs:
-        if claims_data.cord_uid[i] != claims_data.cord_uid[j]:
-            if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
+    # Loop through drugs and filter to claims that mention the drug term
+    for d in drug_terms_mentions_flat:
+        claims_with_drug_index = [d in d_list for d_list in claims_data.drug_terms_mention]
+        claims_with_drug = claims_data[claims_with_drug_index]
+        # Pair all claims with the same drug mention
+        paper_pairs = list(combinations(claims_with_drug.index, 2))
+        # Filter to claim pairs that come from different papers
+        for i, j in paper_pairs:
+            if claims_with_drug.cord_uid[i] != claims_with_drug.cord_uid[j]:
+                # if any(d1 in claims_data.drug_terms_mention[i] for d1 in claims_data.drug_terms_mention[j]):
                 paper_pairs_filt.append((i, j))
+    paper_pairs_filt = list(set(paper_pairs_filt))
 
     # Calculate scispacy vector for each claim
     claims_data['w2vVector'] = [nlp(c).vector.reshape(1, -1) for c in claims_data.claims]
@@ -168,6 +179,7 @@ def add_cord_metadata(input_data, metadata_path):
                           left_on='paper1_cord_uid',
                           right_on='cord_uid')
     cols_rename = {'title': 'title1', 'publish_time': 'publish_time1'}
+    input_data.drop(columns='cord_uid', inplace=True)
     input_data.rename(columns=cols_rename, inplace=True)
 
     # Add title and publish time for second claim's paper
@@ -175,4 +187,7 @@ def add_cord_metadata(input_data, metadata_path):
                           left_on='paper2_cord_uid',
                           right_on='cord_uid')
     cols_rename = {'title': 'title2', 'publish_time': 'publish_time2'}
+    input_data.drop(columns='cord_uid', inplace=True)
     input_data.rename(columns=cols_rename, inplace=True)
+
+    return input_data

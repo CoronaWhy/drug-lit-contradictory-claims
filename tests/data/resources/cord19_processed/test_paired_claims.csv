@@ -1,0 +1,4 @@
+﻿paper1_cord_uid,paper2_cord_uid,text1,text2,similarity_score,drugs1,drugs2
+1z3bvq3e,6470qlu1,"use of remdesivir without any overt side effects in our patient, supports the ongoing clinical trials as a candidate therapeutic agent in covid-19.","in addition, we discovered that simeprevir can synergize with remdesivir in inhibiting sars-cov-2 replication in a cellular model, potentially allowing lower doses of both drugs to be used to treat covid-19.",0.776326597,remdesivir,"remdesivir,simeprevir"
+1z3bvq3e,4178ui2c,"use of remdesivir without any overt side effects in our patient, supports the ongoing clinical trials as a candidate therapeutic agent in covid-19.","even if remdesivir demonstrates benefits in the current randomized controlled trials, its efficacy may be limited.",0.833045363,remdesivir,remdesivir
+,,,,,,
