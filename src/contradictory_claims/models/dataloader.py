@@ -1,5 +1,6 @@
 """DataLoader and Dataclasses classes required for required for SBERT."""
 
+
 from collections import Counter
 
 import torch
@@ -44,7 +45,7 @@ class ClassifierDataset(Dataset):
                                           pad_to_max_length=True,
                                           truncation=True)["input_ids"]
 
-    def class_weight(self):
+    def class_weights(self):
         """Return the class weights to tackle skewness in data while training.
 
         :return: torch tensor of weights
@@ -62,6 +63,12 @@ class ClassifierDataset(Dataset):
     def get_labels():
         """Get class label dictionary."""
         return {"contradiction": 0, "neutral": 1, "entailment": 2}
+
+    @staticmethod
+    def get_mappings():
+        """Get reverse mapping from numeric."""
+        original_dict = self.get_labels()
+        return dict(zip(original_dict.values(), original_dict.keys())
 
     def __len__(self):
         """Return length of Dataset."""

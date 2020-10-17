@@ -1,6 +1,7 @@
 """General module to help train SBERT for NLI tasks."""
 
 
+import datetime
 import os
 import shutil
 
@@ -194,16 +195,17 @@ def train_sbert_model(model_name,
     if models == "deepset/covid_bert_base":
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path
+        os.makedirs(model_save_path, exist_ok=True)
         wget.download("https://cdn.huggingface.co/deepset/covid_bert_base/vocab.txt",
-                      out=model_save_path)  # download the vocab file
+                      out=f"{model_save_path}/")  # download the vocab file
 
     else:
         model_name = "dmis-lab/biobert-v1.1"
         model_save_path = "biobert_path"
+        os.makedirs(model_save_path, exist_ok=True)
         wget.download("https://cdn.huggingface.co/dmis-lab/biobert-v1.1/vocab.txt",
-                      out=model_save_path)  # download the vocab file
+                      out=f"{model_save_path}/")  # download the vocab file
 
-    os.makedirs(model_save_path, exist_ok=True)
     bert_model = BertModel.from_pretrained(model_name)
     bert_model.save_pretrained(model_save_path)
     covid_ert_tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -226,14 +228,14 @@ def train_sbert_model(model_name,
             multi_train_dataset = ClassifierDataset(df_multi_train, tokenizer=covid_ert_tokenizer)
             multi_val_dataset = ClassifierDataset(df_multi_val, tokenizer=covid_ert_tokenizer)
 
-            class_weights = multi_train_dataset.class_weights
+            class_weights = multi_train_dataset.class_weights()
 
             train_loader = DataLoader(dataset=multi_train_dataset,
                                       batch_size=batch_size, collate_fn=collate_fn)
             val_loader = DataLoader(dataset=multi_val_dataset, batch_size=1, collate_fn=collate_fn)
 
             trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, batch_size=batch_size, epochs=num_epochs)
+                    class_weights=class_weights, epochs=num_epochs)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -244,14 +246,14 @@ def train_sbert_model(model_name,
             mednli_train_dataset = ClassifierDataset(df_mednli_train, tokenizer=covid_ert_tokenizer)
             mednli_val_dataset = ClassifierDataset(df_mednli_val, tokenizer=covid_ert_tokenizer)
 
-            class_weights = mednli_train_dataset.class_weights
+            class_weights = mednli_train_dataset.class_weights()
 
             train_loader = DataLoader(dataset=mednli_train_dataset,
                                       batch_size=batch_size, collate_fn=collate_fn)
             val_loader = DataLoader(dataset=mednli_val_dataset, batch_size=1, collate_fn=collate_fn)
 
             trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, batch_size=batch_size, epochs=num_epochs)
+                    class_weights=class_weights, epochs=num_epochs)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -262,13 +264,34 @@ def train_sbert_model(model_name,
             mancon_train_dataset = ClassifierDataset(df_mancon_train, tokenizer=covid_ert_tokenizer)
             mancon_val_dataset = ClassifierDataset(df_mancon_val, tokenizer=covid_ert_tokenizer)
 
-            class_weights = mancon_train_dataset.class_weights
+            class_weights = mancon_train_dataset.class_weights()
 
             train_loader = DataLoader(dataset=mancon_train_dataset,
                                       batch_size=batch_size, collate_fn=collate_fn)
             val_loader = DataLoader(dataset=mancon_val_dataset, batch_size=1, collate_fn=collate_fn)
 
             trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, batch_size=batch_size, epochs=num_epochs)
+                    class_weights=class_weights, epochs=num_epochs)
 
     return sbert_model
+
+
+def save_sbert_model(model: SBERTPredictor,
+                     timed_dir_name: bool = True,
+                     transformer_dir: str = 'output/sbert_model'):
+    """Save SBERT trained model.
+
+    :param model: end-to-end SBERT model
+    :type model: SBERTPredictor
+    :param timed_dir_name: should directory name have time stamp, defaults to True
+    :param transformer_dir: directory name, defaults to 'output/sbert_model'
+    :type transformer_dir: str, optional
+    """
+    if timed_dir_name:
+        now = datetime.datetime.now()
+        transformer_dir = os.path.join(transformer_dir, f"{now.month}-{now.day}-{now.year}")
+
+    if not os.path.exists(transformer_dir):
+        os.makedirs(transformer_dir)
+
+    torch.save(model, transformer_dir)
