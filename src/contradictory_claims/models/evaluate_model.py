@@ -95,10 +95,19 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
                                                     pad_to_max_length=True,
                                                     truncation=True)["input_ids"])
 
-    df.loc[:, 'prediction'] = predictions.argmax(axis=1).to("cpu").numpy()
-    dictionary_mapping = ClassifierDataset.get_mappings()
+    # dictionary_mapping = ClassifierDataset.get_mappings()
+    labels = ClassifierDataset.get_labels()
+    df['predicted_con'] = predictions[:, labels['contradiction']]
+    df['predicted_ent'] = predictions[:, labels['entailment']]
+    df['predicted_neu'] = predictions[:, labels['neutral']]
+    # Calculate predicted class as the max predicted label
+    df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
+    df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
+                                           'predicted_ent': 'entailment',
+                                           'predicted_neu': 'neutral'}, inplace=True)
+    # df.loc[:, 'prediction'] = predictions.argmax(axis=1).to("cpu").numpy()
 
-    df.loc[:, 'predicted_class'] = df['prediction'].apply(lambda x: dictionary_mapping[x])
+    # df.loc[:, 'predicted_class'] = df['prediction'].apply(lambda x: dictionary_mapping[x])
     return df
 
 
