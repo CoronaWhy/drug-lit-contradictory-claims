@@ -12,6 +12,7 @@ from contradictory_claims.models.dataloader import ClassifierDataset
 from contradictory_claims.models.train_model import regular_encode
 from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
+import torch
 from transformers import AutoTokenizer
 
 
@@ -86,14 +87,15 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
     :return: Pandas DataFrame augmented with predictions made using trained model
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    predictions = model(tokenizer.batch_encode_plus(df['text1'],
-                                                    max_length=max_len,
-                                                    pad_to_max_length=True,
-                                                    truncation=True)["input_ids"],
-                        tokenizer.batch_encode_plus(df['text2'],
-                                                    max_length=max_len,
-                                                    pad_to_max_length=True,
-                                                    truncation=True)["input_ids"])
+    with torch.no_grad():
+        predictions = model(tokenizer.batch_encode_plus(df['text1'],
+                                                        max_length=max_len,
+                                                        pad_to_max_length=True,
+                                                        truncation=True)["input_ids"],
+                            tokenizer.batch_encode_plus(df['text2'],
+                                                        max_length=max_len,
+                                                        pad_to_max_length=True,
+                                                        truncation=True)["input_ids"])
 
     # dictionary_mapping = ClassifierDataset.get_mappings()
     labels = ClassifierDataset.get_labels()
