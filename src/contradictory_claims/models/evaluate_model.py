@@ -8,11 +8,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 from contradictory_claims.models.dataloader import ClassifierDataset
 from contradictory_claims.models.train_model import regular_encode
 from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
-import torch
 from transformers import AutoTokenizer
 
 
