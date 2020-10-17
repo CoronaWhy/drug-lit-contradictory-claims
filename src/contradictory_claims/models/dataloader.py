@@ -67,8 +67,8 @@ class ClassifierDataset(Dataset):
     @staticmethod
     def get_mappings():
         """Get reverse mapping from numeric."""
-        original_dict = self.get_labels()
-        return dict(zip(original_dict.values(), original_dict.keys())
+        original_dict = ClassifierDataset.get_labels()
+        return dict(zip(original_dict.values(), original_dict.keys()))
 
     def __len__(self):
         """Return length of Dataset."""
