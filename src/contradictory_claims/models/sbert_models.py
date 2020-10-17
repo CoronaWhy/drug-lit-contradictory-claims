@@ -14,7 +14,7 @@ from sentence_transformers import models
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import BertModel, BertTokenizer
+from transformers import AutoModel, AutoTokenizer
 
 from .dataloader import ClassifierDataset
 from .dataloader import collate_fn, multi_acc
@@ -192,7 +192,7 @@ def train_sbert_model(model_name,
     :return: [description]
     :rtype: [type]
     """
-    if models == "deepset/covid_bert_base":
+    if model_name == "deepset/covid_bert_base":
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path
         os.makedirs(model_save_path, exist_ok=True)
@@ -200,15 +200,17 @@ def train_sbert_model(model_name,
                       out=f"{model_save_path}/")  # download the vocab file
 
     else:
-        model_name = "dmis-lab/biobert-v1.1"
+        model_name = "allenai/biomed_roberta_base"
         model_save_path = "biobert_path"
         os.makedirs(model_save_path, exist_ok=True)
-        wget.download("https://cdn.huggingface.co/dmis-lab/biobert-v1.1/vocab.txt",
+        wget.download("https://cdn.huggingface.co/allenai/biomed_roberta_base/merges.txt",
+                      out=f"{model_save_path}/")
+        wget.download("https://cdn.huggingface.co/allenai/biomed_roberta_base/vocab.json",
                       out=f"{model_save_path}/")  # download the vocab file
 
-    bert_model = BertModel.from_pretrained(model_name)
+    bert_model = AutoModel.from_pretrained(model_name)
     bert_model.save_pretrained(model_save_path)
-    covid_ert_tokenizer = BertTokenizer.from_pretrained(model_name)
+    covid_ert_tokenizer = AutoTokenizer.from_pretrained(model_name)
     del bert_model
 
     word_embedding_model = models.Transformer(model_save_path)
@@ -294,4 +296,17 @@ def save_sbert_model(model: SBERTPredictor,
     if not os.path.exists(transformer_dir):
         os.makedirs(transformer_dir)
 
-    torch.save(model, transformer_dir)
+    torch.save(model, os.path.join(transformer_dir, 'sigmoid.pickle'))
+
+
+def load_sbert_model(transformer_dir: str = 'output/sbert_model',
+                     file_name: str = 'sigmoid.pickle'):
+    """Load the pickle file containing the model weights.
+
+    :param transformer_dir: folder directory, defaults to 'output/sbert_model'
+    :param file_name: file name, defaults to 'sigmoid.pickle'
+    :return: SBERT model stored at given location
+    :rtype: SBERTPredictor
+    """
+    sbert_model = torch.load(os.path.join(transformer_dir, file_name))
+    return sbert_model

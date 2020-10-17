@@ -15,7 +15,8 @@ from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     filter_section_with_drugs, merge_section_text
 from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
-from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
+from .models.evaluate_model import create_report, make_predictions, make_sbert_predictions, read_data_from_excel
+from .models.sbert_models import load_sbert_model, save_sbert_model, train_sbert_model
 from .models.train_model import load_model, save_model, train_model
 
 
@@ -24,7 +25,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--report/--no-report', 'report', default=False)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
-def main(extract, train, report, cord_version):
+@click.option('--sbert', 'sbert', default=False)
+def main(extract, train, report, cord_version, sbert):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -33,6 +35,7 @@ def main(extract, train, report, cord_version):
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
     trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
+    sbert_trained_model_out_dir = 'output/sbert_model'
 
     # CORD-19 metadata path
     # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
@@ -132,23 +135,45 @@ def main(extract, train, report, cord_version):
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
-        # Train model
-        trained_model, _ = train_model(multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y,
-                                       med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y,
-                                       man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y,
-                                       drug_names, virus_names,
-                                       model_name=model_name)
-
+        if sbert:
+            sbert_model = train_sbert_model(model_name,
+                                            mancon_corpus=True,
+                                            med_nli=True,
+                                            multi_nli=True,
+                                            multi_nli_train_x=multi_nli_train_x,
+                                            multi_nli_train_y=multi_nli_train_y,
+                                            multi_nli_test_x=multi_nli_test_x,
+                                            multi_nli_test_y=multi_nli_test_y,
+                                            med_nli_train_x=med_nli_train_x,
+                                            med_nli_train_y=med_nli_train_y,
+                                            med_nli_test_x=med_nli_test_x,
+                                            med_nli_test_y=med_nli_test_y,
+                                            man_con_train_y=man_con_train_y,
+                                            man_con_train_x=man_con_train_x,
+                                            man_con_test_x=man_con_test_x,
+                                            man_con_test_y=man_con_test_y)
+            save_sbert_model(sbert_model)
+        else:
+            # Train model
+            trained_model, _ = train_model(multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y,
+                                           med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y,
+                                           man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y,
+                                           drug_names, virus_names,
+                                           model_name=model_name)
+            save_model(trained_model)
         # Save model
         out_dir = 'output/working/'
-        save_model(trained_model)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
     else:
-        transformer_dir = os.path.join(root_dir, trained_model_out_dir)
-        pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
-        trained_model = load_model(pickle_file, transformer_dir)
+        if sbert:
+            sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
+            sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
+        else:
+            transformer_dir = os.path.join(root_dir, trained_model_out_dir)
+            pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
+            trained_model = load_model(pickle_file, transformer_dir)
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
@@ -158,8 +183,11 @@ def main(extract, train, report, cord_version):
         active_sheet = "All_phase2"
         eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
 
-        # Make predictions using trained model
-        eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name)
+        if sbert:
+            eval_data = make_sbert_predictions(df=eval_data, model=sbert_model, model_name=model_name)
+        else:
+            # Make predictions using trained model
+            eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name)
 
         # Now create the report
         out_report_dir = os.path.join(trained_model_out_dir)

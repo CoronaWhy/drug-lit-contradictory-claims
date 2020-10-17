@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from contradictory_claims.models.train_model import regular_encode
+from contradictory_claims.models.dataloader import ClassifierDataset
 from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
 from transformers import AutoTokenizer
@@ -71,6 +72,33 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
     else:
         raise ValueError(f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
 
+    return df
+
+
+def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 512):
+    """Make predictions using SBERt trained model.
+
+    :param df: Pandas DataFrame containing data to predict on
+    :param model: end-to-end trained Transformer model
+    :param model_name: name of model to be loaded by Transformer to get proper tokenizer
+    :param max_len: max length of string to be encoded
+    :param method: "multiclass" or "binary"--describes setting for prediction outputs
+    :return: Pandas DataFrame augmented with predictions made using trained model
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    predictions = model(tokenizer.batch_encode_plus(df['text1'],
+                                                    max_length=max_len,
+                                                    pad_to_max_length=True,
+                                                    truncation=True)["input_ids"],
+                        tokenizer.batch_encode_plus(df['text2'],
+                                                    max_length=max_len,
+                                                    pad_to_max_length=True,
+                                                    truncation=True)["input_ids"])
+
+    df.loc[:, 'prediction'] = predictions.argmax(axis=1).to("cpu").numpy()
+    dictionary_mapping = ClassifierDataset.get_mappings()
+
+    df.loc[:, 'predicted_class'] = df['prediction'].apply(lambda x: dictionary_mapping[x])
     return df
 
 
