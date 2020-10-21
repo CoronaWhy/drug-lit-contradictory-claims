@@ -33,8 +33,11 @@ def main(extract, train, bluebert_train, report, cord_version):
     model_id = "biomed_roberta"
     # Find path of bluebert cloned repo containing pretrained model
     if bluebert_train:
-        for source_name in glob.glob("./**/bluebert/**/bert_model.ckpt"):
-            bluebert_pretrained_path, fullname = os.path.split(source_name)
+        for root, dirs, files in os.walk("C:/"):
+            for name in dirs:
+                if name == 'bluebert':
+                    bluebert_repo_path = os.path.abspath(os.path.join(root,name))
+                    break
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))

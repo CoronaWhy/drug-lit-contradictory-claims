@@ -9,16 +9,21 @@ import setuptools
 if __name__ == '__main__':
     setuptools.setup()
     # Setup for Bluebert model
-    for source_name in glob.glob("./**/convert_bert_original_tf_checkpoint_to_pytorch.py"):
-        python_file_path, fullname = os.path.split(source_name)
-    for source_name in glob.glob("./**/bluebert/**/bert_model.ckpt"):
-        bluebert_repo_path, fullname = os.path.split(source_name)
-    command = python_file_path+"/convert_bert_original_tf_checkpoint_to_pytorch.py "\
-              "tf_checkpoint_path="+bluebert_repo_path+"/bert_model.ckpt "\
-              "bert_config_file="+bluebert_repo_path+"/bert_config.json "\
-              "pytorch_dump_path="+bluebert_repo_path+"/pytorch_model.bin"
+    for root, dirs, files in os.walk("C:/"):
+        for name in files:
+            if name == 'convert_bert_original_tf_checkpoint_to_pytorch.py':
+                python_file_path = os.path.abspath(root)
+                break
+    for root, dirs, files in os.walk("C:/"):
+        for name in dirs:
+            if name == 'bluebert':
+                bluebert_repo_path = os.path.abspath(os.path.join(root,name))
+                break
+    command = "python "+python_file_path+"/convert_bert_original_tf_checkpoint_to_pytorch.py "\
+              "--tf_checkpoint_path="+bluebert_repo_path+"/bert_model.ckpt "\
+              "--bert_config_file="+bluebert_repo_path+"/bert_config.json "\
+              "--pytorch_dump_path="+bluebert_repo_path+"/pytorch_model.bin"
     os.system(command)
-    for source_name in glob.glob("./**/bluebert/**/bert-config.json"):
-        path, fullname = os.path.split(source_name)
-        target_name = os.path.join(path, 'config.json')
-        os.rename(source_name, target_name)
+    source_file = os.path.join(bluebert_repo_path, "bert_config.json")
+    target_file = os.path.join(bluebert_repo_path, "config.json")
+    os.rename(source_file, target_file)
