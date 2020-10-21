@@ -255,12 +255,12 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     # Fine tune model on MultiNLI
     if use_multi_nli:
         model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device)
-    print('Completed Bluebert finw tuning on MultiNLI')  # noqa: T001
+    print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
         model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device)
-    print('Completed Bluebert finw tuning on MedNLI')  # noqa: T001
+    print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
