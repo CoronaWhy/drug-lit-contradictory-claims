@@ -4,6 +4,7 @@
 from collections import Counter
 
 import torch
+from sentence_transformers.readers import InputExample
 from torch.utils.data import Dataset
 
 
@@ -104,3 +105,43 @@ def collate_fn(batch):
     label = [item[2] for item in batch]
     label = torch.tensor(label)
     return sentence1, sentence2, label
+
+
+class NLIDataReader(object):
+    """NLI Dataset Reader."""
+
+    def __init__(self, dataframe):
+        """Initialize the Class.
+
+        :param dataframe: Input DataFrame with "sentence1", "sentence2", "label" as expected columns
+        """
+        self.df = dataframe.copy()
+
+    def get_examples(self, max_examples: int = None):
+        """Get a set of examples as required by SentencesDataset.
+
+        :param max_examples: number of samples to return, defaults to None
+        :return: InputExample object
+        """
+        if max_examples is None:
+            max_examples = self.df.shape[0]
+        s1 = self.df["sentence1"].iloc[:max_examples].values
+        s2 = self.df["sentence2"].iloc[:max_examples].values
+        labels = self.df["label"].astype(int).iloc[:max_examples].values
+        examples = []
+        for guid_id, (sentence_a, sentence_b, label) in enumerate(zip(s1, s2, labels)):
+            examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=label))
+        return examples
+
+    @staticmethod
+    def get_labels():
+        """Get class label dictionary."""
+        return {"contradiction": 0, "entailment": 2, "neutral": 1}
+
+    def get_num_labels(self):
+        """Get number of labels."""
+        return len(self.get_labels())
+
+    def map_label(self, label):
+        """Map labels to their numbers."""
+        return self.get_labels()[label.strip().lower()]

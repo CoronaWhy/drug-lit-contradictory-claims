@@ -5,18 +5,20 @@ import datetime
 import os
 import shutil
 
+import math
 import numpy as np
 import torch
 import torch.optim as optim
 import wget
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import models
+from sentence_transformers import SentencesDataset, SentenceTransformer
+from sentence_transformers import models, losses
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
 
-from .dataloader import ClassifierDataset
+from .dataloader import ClassifierDataset, NLIDataReader
 from .dataloader import collate_fn, multi_acc
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
@@ -83,6 +85,118 @@ def unfreeze_layer(layer):
     """
     for param in layer.parameters():
         param.requires_grad = True
+
+
+def new_trainer(model: SBERTPredictor,
+                tokenizer,
+                df_train,
+                df_val,
+                epochs: int = 1,
+                learning_rate: float = 1e-5,
+                batch_size: int = 16,
+                ):
+
+    nli_reader = NLIDataReader(df_train)
+    train_num_labels = nli_reader.get_num_labels()
+
+    train_data = SentencesDataset(nli_reader.get_examples(), model=model)
+    train_data.label_type = torch.long
+    # some bug in sentence_transformer library causes it to be identified as float by default
+    train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
+    train_loss = losses.SoftmaxLoss(
+        model=model.embedding_model,
+        sentence_embedding_dimension=model.embedding_model.get_sentence_embedding_dimension(),
+        num_labels=train_num_labels)
+
+    val_nli_reader = NLIDataReader(df_val)
+    dev_data = SentencesDataset(val_nli_reader.get_examples(), model=model.embedding_model)
+    dev_data.label_type = torch.long
+    evaluator = EmbeddingSimilarityEvaluator(sentences1=df_val["sentence1"].values,
+                                             sentences2=df_val["sentence2"].values,
+                                             scores=df_val["label"].values,
+                                             batch_size=batch_size)
+    warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
+
+    unfreeze_layer(model.embedding_model)
+    model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
+                              evaluator=evaluator,
+                              epochs=epochs,
+                              evaluation_steps=1000,
+                              warmup_steps=warmup_steps,
+                              )  # train the Transformer layer
+    freeze_layer(model.embedding_model)
+
+    # now to train the final layer
+    train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
+    val_dataset = ClassifierDataset(df_val, tokenizer=tokenizer)
+
+    class_weights = train_dataset.class_weights()
+
+    train_dataloader = DataLoader(dataset=train_dataset,
+                                  batch_size=batch_size,
+                                  collate_fn=collate_fn)
+    val_dataloader = DataLoader(dataset=val_dataset,
+                                batch_size=1,
+                                collate_fn=collate_fn)
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    model.to(device)
+    accuracy_stats = {"train": [],
+                      "val": [],
+                      }
+    loss_stats = {"train": [],
+                  "val": [],
+                  }
+
+    print("------TRAINING STARTS----------")  # noqa: T001
+
+    for e in range(epochs):
+        train_epoch_loss = 0
+        train_epoch_acc = 0
+        model.train()
+        for sentence1, sentence2, label in tqdm(train_dataloader):
+            label = label.to(device)
+            optimizer.zero_grad()
+            y_train_pred = model(sentence1, sentence2)
+
+            train_loss = criterion(y_train_pred, label)
+            train_acc = multi_acc(y_train_pred, label)
+
+            train_loss.backward()
+            optimizer.step()
+
+            train_epoch_loss += train_loss.item()
+            train_epoch_acc += train_acc.item()
+
+        # VALIDATION
+        with torch.no_grad():
+
+            val_epoch_loss = 0
+            val_epoch_acc = 0
+
+            model.eval()
+            for sentence1, sentence2, label in val_dataloader:
+                label = label.to(device)
+                y_val_pred = model(sentence1, sentence2)
+
+                val_loss = criterion(y_val_pred, label)
+                val_acc = multi_acc(y_val_pred, label)
+
+                val_epoch_loss += val_loss.item()
+                val_epoch_acc += val_acc.item()
+
+        loss_stats['train'].append(train_epoch_loss / len(train_dataloader))
+        loss_stats['val'].append(val_epoch_loss / len(val_dataloader))
+        accuracy_stats['train'].append(train_epoch_acc / len(train_dataloader))
+        accuracy_stats['val'].append(val_epoch_acc / len(val_dataloader))
+        print(f"Epoch {e+0:03}: | Train Loss: {train_epoch_loss/len(train_dataloader):.5f} \
+            | Val Loss: {val_epoch_loss / len(val_dataloader):.5f} \
+            | Train Acc: {train_epoch_acc/len(train_dataloader):.3f} \
+            | Val Acc: {val_epoch_acc/len(val_dataloader):.3f}")  # noqa: T001
+
+    print("---------TRAINING ENDED------------")  # noqa: T001
 
 
 def trainer(model: SBERTPredictor,
@@ -228,7 +342,7 @@ def train_sbert_model(model_name,
 
     bert_model = AutoModel.from_pretrained(model_name)
     bert_model.save_pretrained(model_save_path)
-    covid_ert_tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     del bert_model
 
     word_embedding_model = models.Transformer(model_save_path)
@@ -245,17 +359,19 @@ def train_sbert_model(model_name,
             df_multi_train = remove_tokens_get_sentence_sbert(multi_nli_train_x, multi_nli_train_y)
             df_multi_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
 
-            multi_train_dataset = ClassifierDataset(df_multi_train, tokenizer=covid_ert_tokenizer)
-            multi_val_dataset = ClassifierDataset(df_multi_val, tokenizer=covid_ert_tokenizer)
+            # multi_train_dataset = ClassifierDataset(df_multi_train, tokenizer=covid_ert_tokenizer)
+            # multi_val_dataset = ClassifierDataset(df_multi_val, tokenizer=covid_ert_tokenizer)
 
-            class_weights = multi_train_dataset.class_weights()
+            # class_weights = multi_train_dataset.class_weights()
 
-            train_loader = DataLoader(dataset=multi_train_dataset,
-                                      batch_size=batch_size, collate_fn=collate_fn)
-            val_loader = DataLoader(dataset=multi_val_dataset, batch_size=1, collate_fn=collate_fn)
+            # train_loader = DataLoader(dataset=multi_train_dataset,
+            #                           batch_size=batch_size, collate_fn=collate_fn)
+            # val_loader = DataLoader(dataset=multi_val_dataset, batch_size=1, collate_fn=collate_fn)
 
-            trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, epochs=num_epochs)
+            # trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
+            #         class_weights=class_weights, epochs=num_epochs)
+            new_trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
+                        df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -263,8 +379,8 @@ def train_sbert_model(model_name,
             df_mednli_train = remove_tokens_get_sentence_sbert(med_nli_train_x, med_nli_train_y)
             df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
 
-            mednli_train_dataset = ClassifierDataset(df_mednli_train, tokenizer=covid_ert_tokenizer)
-            mednli_val_dataset = ClassifierDataset(df_mednli_val, tokenizer=covid_ert_tokenizer)
+            mednli_train_dataset = ClassifierDataset(df_mednli_train, tokenizer=tokenizer)
+            mednli_val_dataset = ClassifierDataset(df_mednli_val, tokenizer=tokenizer)
 
             class_weights = mednli_train_dataset.class_weights()
 
@@ -281,8 +397,8 @@ def train_sbert_model(model_name,
             df_mancon_train = remove_tokens_get_sentence_sbert(man_con_train_x, man_con_train_y)
             df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
-            mancon_train_dataset = ClassifierDataset(df_mancon_train, tokenizer=covid_ert_tokenizer)
-            mancon_val_dataset = ClassifierDataset(df_mancon_val, tokenizer=covid_ert_tokenizer)
+            mancon_train_dataset = ClassifierDataset(df_mancon_train, tokenizer=tokenizer)
+            mancon_val_dataset = ClassifierDataset(df_mancon_val, tokenizer=tokenizer)
 
             class_weights = mancon_train_dataset.class_weights()
 
