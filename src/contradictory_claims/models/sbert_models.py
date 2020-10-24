@@ -67,6 +67,24 @@ class SBERTPredictor(SentenceTransformer):
         return h_out
 
 
+def freeze_layer(layer):
+    """Freeze's the mentioned layer.
+
+    :param layer: torch model layer
+    """
+    for param in layer.parameters():
+        param.requires_grad = False
+
+
+def unfreeze_layer(layer):
+    """UnFreeze's the mentioned layer.
+
+    :param layer: torch model layer
+    """
+    for param in layer.parameters():
+        param.requires_grad = True
+
+
 def trainer(model: SBERTPredictor,
             train_dataloader: ClassifierDataset,
             val_dataloader: ClassifierDataset,
