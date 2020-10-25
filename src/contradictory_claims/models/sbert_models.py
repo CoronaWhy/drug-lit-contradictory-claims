@@ -79,7 +79,7 @@ def freeze_layer(layer):
 
 
 def unfreeze_layer(layer):
-    """UnFreeze's the mentioned layer.
+    """Unfreeze's the mentioned layer.
 
     :param layer: torch model layer
     """
@@ -111,7 +111,6 @@ def new_trainer(model: SBERTPredictor,
     :param batch_size: batch size to be used for training
     :type batch_size: int
     """
-
     nli_reader = NLIDataReader(df_train)
     train_num_labels = nli_reader.get_num_labels()
 
