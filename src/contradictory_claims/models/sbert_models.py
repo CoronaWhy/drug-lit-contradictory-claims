@@ -2,16 +2,16 @@
 
 
 import datetime
+import math
 import os
 import shutil
 
-import math
 import numpy as np
 import torch
 import torch.optim as optim
 import wget
-from sentence_transformers import SentencesDataset, SentenceTransformer
-from sentence_transformers import models, losses
+from sentence_transformers import SentenceTransformer, SentencesDataset
+from sentence_transformers import losses, models
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from torch import nn
 from torch.utils.data import DataLoader
@@ -95,11 +95,27 @@ def new_trainer(model: SBERTPredictor,
                 learning_rate: float = 1e-5,
                 batch_size: int = 16,
                 ):
+    """Train the SBERT model using a training data loader and a validation dataloader.
+
+    :param model: SBERTPredicor model
+    :type model: SBERT_Predictor
+    :param tokenizer: tokenizer used in SBERT model
+    :param df_train: train dataframe
+    :type train_dataloader: pd.DataFrame()
+    :param df_val: validation dataframe
+    :type df_val: pd.DataFrame()
+    :param epochs: numer of epochs
+    :type epochs: int
+    :param learning_rate: learning rate
+    :type learning_rate: float
+    :param batch_size: batch size to be used for training
+    :type batch_size: int
+    """
 
     nli_reader = NLIDataReader(df_train)
     train_num_labels = nli_reader.get_num_labels()
 
-    train_data = SentencesDataset(nli_reader.get_examples(), model=model)
+    train_data = SentencesDataset(nli_reader.get_examples(), model=model.embedding_model)
     train_data.label_type = torch.long
     # some bug in sentence_transformer library causes it to be identified as float by default
     train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
