@@ -96,6 +96,7 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
                                                         max_length=max_len,
                                                         pad_to_max_length=True,
                                                         truncation=True)["input_ids"])
+        predictions = torch.log_softmax(predictions, dim=1)
 
     # dictionary_mapping = ClassifierDataset.get_mappings()
     labels = ClassifierDataset.get_labels()
