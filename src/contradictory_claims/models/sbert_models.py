@@ -43,7 +43,7 @@ class SBERTPredictor(SentenceTransformer):
         self.embedding_model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
         self.linear = nn.Linear(6912, num_classes)
         # self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax(num_classes=3)
+        self.softmax = nn.Softmax(dim=1)
         if device is None:
             self._target_device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         else:
