@@ -42,8 +42,8 @@ class SBERTPredictor(SentenceTransformer):
         super().__init__()
         self.embedding_model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
         self.linear = nn.Linear(6912, num_classes)
-        self.sigmoid = nn.Sigmoid()
-        # self.softmax = nn.Softmax(num_classes=3)
+        # self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(num_classes=3)
         if device is None:
             self._target_device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         else:
@@ -65,7 +65,8 @@ class SBERTPredictor(SentenceTransformer):
         net_vector = torch.cat((sentence1_embedding, sentence2_embedding,
                                 torch.abs(sentence1_embedding - sentence2_embedding)), 1)
         linear = self.linear(net_vector)
-        h_out = self.sigmoid(linear)
+        # h_out = self.sigmoid(linear)
+        h_out = self.softmax(linear)
         return h_out
 
 
@@ -87,14 +88,14 @@ def unfreeze_layer(layer):
         param.requires_grad = True
 
 
-def new_trainer(model: SBERTPredictor,
-                tokenizer,
-                df_train,
-                df_val,
-                epochs: int = 1,
-                learning_rate: float = 1e-5,
-                batch_size: int = 16,
-                ):
+def trainer(model: SBERTPredictor,
+            tokenizer,
+            df_train,
+            df_val,
+            epochs: int = 1,
+            learning_rate: float = 1e-5,
+            batch_size: int = 16,
+            ):
     """Train the SBERT model using a training data loader and a validation dataloader.
 
     :param model: SBERTPredicor model
@@ -154,88 +155,6 @@ def new_trainer(model: SBERTPredictor,
                                 batch_size=1,
                                 collate_fn=collate_fn)
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    model.to(device)
-    accuracy_stats = {"train": [],
-                      "val": [],
-                      }
-    loss_stats = {"train": [],
-                  "val": [],
-                  }
-
-    print("------TRAINING STARTS----------")  # noqa: T001
-
-    for e in range(epochs):
-        train_epoch_loss = 0
-        train_epoch_acc = 0
-        model.train()
-        for sentence1, sentence2, label in tqdm(train_dataloader):
-            label = label.to(device)
-            optimizer.zero_grad()
-            y_train_pred = model(sentence1, sentence2)
-
-            train_loss = criterion(y_train_pred, label)
-            train_acc = multi_acc(y_train_pred, label)
-
-            train_loss.backward()
-            optimizer.step()
-
-            train_epoch_loss += train_loss.item()
-            train_epoch_acc += train_acc.item()
-
-        # VALIDATION
-        with torch.no_grad():
-
-            val_epoch_loss = 0
-            val_epoch_acc = 0
-
-            model.eval()
-            for sentence1, sentence2, label in val_dataloader:
-                label = label.to(device)
-                y_val_pred = model(sentence1, sentence2)
-
-                val_loss = criterion(y_val_pred, label)
-                val_acc = multi_acc(y_val_pred, label)
-
-                val_epoch_loss += val_loss.item()
-                val_epoch_acc += val_acc.item()
-
-        loss_stats['train'].append(train_epoch_loss / len(train_dataloader))
-        loss_stats['val'].append(val_epoch_loss / len(val_dataloader))
-        accuracy_stats['train'].append(train_epoch_acc / len(train_dataloader))
-        accuracy_stats['val'].append(val_epoch_acc / len(val_dataloader))
-        print(f"Epoch {e+0:03}: | Train Loss: {train_epoch_loss/len(train_dataloader):.5f} \
-            | Val Loss: {val_epoch_loss / len(val_dataloader):.5f} \
-            | Train Acc: {train_epoch_acc/len(train_dataloader):.3f} \
-            | Val Acc: {val_epoch_acc/len(val_dataloader):.3f}")  # noqa: T001
-
-    print("---------TRAINING ENDED------------")  # noqa: T001
-
-
-def trainer(model: SBERTPredictor,
-            train_dataloader: ClassifierDataset,
-            val_dataloader: ClassifierDataset,
-            class_weights: torch.tensor,
-            epochs: int,
-            learning_rate: float = 1e-5,
-            ):
-    """Train the SBERT model using a training data loader and a validation dataloader.
-
-    :param model: SBERTPredicor model
-    :type model: SBERT_Predictor
-    :param train_dataloader: train dataloader
-    :type train_dataloader: ClassifierDataset
-    :param val_dataloader: validatoin Dataloader
-    :type val_dataloader: ClassifierDataset
-    :param class_weights: class weiights tensor
-    :type class_weights: torch.tensor
-    :param epochs: numer of epochs
-    :type epochs: int
-    :param learning_rate: learning rate
-    :type learning_rate: float
-    """
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -374,19 +293,8 @@ def train_sbert_model(model_name,
             df_multi_train = remove_tokens_get_sentence_sbert(multi_nli_train_x, multi_nli_train_y)
             df_multi_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
 
-            # multi_train_dataset = ClassifierDataset(df_multi_train, tokenizer=covid_ert_tokenizer)
-            # multi_val_dataset = ClassifierDataset(df_multi_val, tokenizer=covid_ert_tokenizer)
-
-            # class_weights = multi_train_dataset.class_weights()
-
-            # train_loader = DataLoader(dataset=multi_train_dataset,
-            #                           batch_size=batch_size, collate_fn=collate_fn)
-            # val_loader = DataLoader(dataset=multi_val_dataset, batch_size=1, collate_fn=collate_fn)
-
-            # trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-            #         class_weights=class_weights, epochs=num_epochs)
-            new_trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
-                        df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size)
+            trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
+                    df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -394,17 +302,8 @@ def train_sbert_model(model_name,
             df_mednli_train = remove_tokens_get_sentence_sbert(med_nli_train_x, med_nli_train_y)
             df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
 
-            mednli_train_dataset = ClassifierDataset(df_mednli_train, tokenizer=tokenizer)
-            mednli_val_dataset = ClassifierDataset(df_mednli_val, tokenizer=tokenizer)
-
-            class_weights = mednli_train_dataset.class_weights()
-
-            train_loader = DataLoader(dataset=mednli_train_dataset,
-                                      batch_size=batch_size, collate_fn=collate_fn)
-            val_loader = DataLoader(dataset=mednli_val_dataset, batch_size=1, collate_fn=collate_fn)
-
-            trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, epochs=num_epochs)
+            trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mednli_train,
+                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -412,17 +311,8 @@ def train_sbert_model(model_name,
             df_mancon_train = remove_tokens_get_sentence_sbert(man_con_train_x, man_con_train_y)
             df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
-            mancon_train_dataset = ClassifierDataset(df_mancon_train, tokenizer=tokenizer)
-            mancon_val_dataset = ClassifierDataset(df_mancon_val, tokenizer=tokenizer)
-
-            class_weights = mancon_train_dataset.class_weights()
-
-            train_loader = DataLoader(dataset=mancon_train_dataset,
-                                      batch_size=batch_size, collate_fn=collate_fn)
-            val_loader = DataLoader(dataset=mancon_val_dataset, batch_size=1, collate_fn=collate_fn)
-
-            trainer(model=sbert_model, train_dataloader=train_loader, val_dataloader=val_loader,
-                    class_weights=class_weights, epochs=num_epochs)
+            trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
+                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size)
 
     return sbert_model
 

@@ -86,8 +86,9 @@ def multi_acc(y_pred: torch.tensor, y_test: torch.tensor):
     :return: accuracy of the model
     :rtype: torch.tensor
     """
-    y_pred_softmax = torch.log_softmax(y_pred, dim=1)
-    _, y_pred_tags = torch.max(y_pred_softmax, dim=1)
+    # y_pred_softmax = torch.log_softmax(y_pred, dim=1)
+    # _, y_pred_tags = torch.max(y_pred_softmax, dim=1)
+    _, y_pred_tags = torch.max(y_pred, dim=1)
     correct_pred = (y_pred_tags == y_test).float()
     acc = correct_pred.sum() / len(correct_pred)
     acc = torch.round(acc * 100)
