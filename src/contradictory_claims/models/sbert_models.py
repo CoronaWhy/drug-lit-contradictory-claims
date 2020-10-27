@@ -218,7 +218,13 @@ def trainer(model: SBERTPredictor,
     print("---------TRAINING ENDED------------")  # noqa: T001
 
 
-def build_sbert_model(model_name):
+def build_sbert_model(model_name: str):
+    """Build SBERT model, based on model name provided.
+
+    :param model_name: model to be used, currently supported: covidbert or biobert
+    :type model_name: str
+    :return: SBERT model and corresponding tokenizer
+    """
     if model_name == "covidbert":
         model_name = "deepset/covid_bert_base"
         covid_bert_path = "covid_bert_path"
@@ -294,8 +300,6 @@ def train_sbert_model(sbert_model,
     :type batch_size: int, optional
     :param num_epochs: [description], defaults to 1
     :type num_epochs: int, optional
-    :return: [description]
-    :rtype: [type]
     """
     if multi_nli:
         if multi_nli_train_x is not None:
@@ -324,7 +328,7 @@ def train_sbert_model(sbert_model,
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
                     df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size)
 
-    return sbert_model
+    # return sbert_model
 
 
 def save_sbert_model(model: SBERTPredictor,

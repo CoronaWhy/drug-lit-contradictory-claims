@@ -1,4 +1,4 @@
-""" Test for training SBERT model."""
+"""Test for training SBERT model."""
 
 import os
 import unittest
@@ -11,7 +11,7 @@ class TestSbertModel(unittest.TestCase):
     """Test SBERT Training modules."""
 
     def setUp(self):
-        """Loads model to extract claims."""
+        """Load model to extract claims."""
         model_name = "covidbert"
         self.sbert_model, self.tokenizer = build_sbert_model(model_name)
         self.out_dir = 'tests/sbert_models/test_output'
