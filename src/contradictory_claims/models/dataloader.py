@@ -131,8 +131,8 @@ class NLIDataReader(object):
         labels = self.df["label"].astype(int).iloc[:max_examples].values
         examples = []
         for guid_id, (sentence_a, sentence_b, label) in enumerate(zip(s1, s2, labels)):
-            # examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=label))
-            examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=self.mapping_sts(label)))
+            examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=label))
+            # examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=self.mapping_sts(label)))
         return examples
 
     @staticmethod
@@ -140,9 +140,9 @@ class NLIDataReader(object):
         """Get class label dictionary."""
         return {"contradiction": 0, "entailment": 2, "neutral": 1}
 
-    def mapping_sts(self, label):
-        """Generate alternative labels, i.e. -1,0,1 for cont, neut, enta."""
-        return {0: -1, 1: 0, 2: 1}[label]
+    # def mapping_sts(self, label):
+    #     """Generate alternative labels, i.e. -1,0,1 for cont, neut, enta."""
+    #     return {0: -1, 1: 0, 2: 1}[label]
 
     def get_num_labels(self):
         """Get number of labels."""

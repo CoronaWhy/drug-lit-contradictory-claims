@@ -132,7 +132,7 @@ def trainer(model: SBERTPredictor,
     dev_data.label_type = torch.long
     evaluator = EmbeddingSimilarityEvaluator(sentences1=df_val["sentence1"].values,
                                              sentences2=df_val["sentence2"].values,
-                                             scores=df_val["label"].values,
+                                             scores=df_val["label"].values/2.,
                                              batch_size=batch_size)
     warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
 
