@@ -86,6 +86,10 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
     :param method: "multiclass" or "binary"--describes setting for prediction outputs
     :return: Pandas DataFrame augmented with predictions made using trained model
     """
+    if model_name == "covidbert":
+        model_name = "deepset/covid_bert_base"
+    else:
+        model_name = "allenai/biomed_roberta_base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     with torch.no_grad():
         predictions = model(tokenizer.batch_encode_plus(df['text1'],

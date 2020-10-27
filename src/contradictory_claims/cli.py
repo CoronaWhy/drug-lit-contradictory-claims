@@ -16,7 +16,7 @@ from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
 from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
 from .models.evaluate_model import create_report, make_predictions, make_sbert_predictions, read_data_from_excel
-from .models.sbert_models import load_sbert_model, save_sbert_model, train_sbert_model
+from .models.sbert_models import build_sbert_model, load_sbert_model, save_sbert_model, train_sbert_model
 from .models.train_model import load_model, save_model, train_model
 
 
@@ -136,7 +136,9 @@ def main(extract, train, report, cord_version, sbert):
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         if sbert:
-            sbert_model = train_sbert_model(model_name,
+            sbert_model, tokenizer = build_sbert_model(model_name)
+            sbert_model = train_sbert_model(sbert_model,
+                                            tokenizer=tokenizer,
                                             mancon_corpus=True,
                                             med_nli=True,
                                             multi_nli=True,

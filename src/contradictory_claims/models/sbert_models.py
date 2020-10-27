@@ -41,8 +41,8 @@ class SBERTPredictor(SentenceTransformer):
         """
         super().__init__()
         self.embedding_model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
-        self.linear = nn.Linear(6912, num_classes)
-        # self.linear = nn.Linear(4608, num_classes)
+        # self.linear = nn.Linear(6912, num_classes)
+        self.linear = nn.Linear(2304, num_classes)
         # self.sigmoid = nn.Sigmoid()
         # self.softmax = nn.Softmax(dim=1)
         if device is None:
@@ -60,9 +60,9 @@ class SBERTPredictor(SentenceTransformer):
         :rtype: torch.Tensor
         """
         sentence1_embedding = torch.tensor(self.embedding_model.encode(sentence1, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 2304)
+                                           device=self._target_device)
         sentence2_embedding = torch.tensor(self.embedding_model.encode(sentence2, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 2304)
+                                           device=self._target_device)
         net_vector = torch.cat((sentence1_embedding, sentence2_embedding,
                                 torch.abs(sentence1_embedding - sentence2_embedding)), 1)
         # net_vector = torch.cat((sentence1_embedding, sentence2_embedding), 1)
@@ -132,7 +132,7 @@ def trainer(model: SBERTPredictor,
     dev_data.label_type = torch.long
     evaluator = EmbeddingSimilarityEvaluator(sentences1=df_val["sentence1"].values,
                                              sentences2=df_val["sentence2"].values,
-                                             scores=df_val["label"].values/2.,
+                                             scores=df_val["label"].values / 2.,
                                              batch_size=batch_size)
     warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
 
@@ -218,49 +218,7 @@ def trainer(model: SBERTPredictor,
     print("---------TRAINING ENDED------------")  # noqa: T001
 
 
-def train_sbert_model(model_name,
-                      mancon_corpus=False,
-                      med_nli=False,
-                      multi_nli=False,
-                      multi_nli_train_x: np.ndarray = None,
-                      multi_nli_train_y: np.ndarray = None,
-                      multi_nli_test_x: np.ndarray = None,
-                      multi_nli_test_y: np.ndarray = None,
-                      med_nli_train_x: np.ndarray = None,
-                      med_nli_train_y: np.ndarray = None,
-                      med_nli_test_x: np.ndarray = None,
-                      med_nli_test_y: np.ndarray = None,
-                      man_con_train_y: np.ndarray = None,
-                      man_con_train_x: np.ndarray = None,
-                      man_con_test_x: np.ndarray = None,
-                      man_con_test_y: np.ndarray = None,
-                      batch_size: int = 2,
-                      num_epochs: int = 1,
-                      ):
-    """Train SBERT on any NLI dataset.
-
-    :param model_name: model to be used, currently supported: covidbert or biobert
-    :param mancon_corpus: [description], defaults to False
-    :type mancon_corpus: bool, optional
-    :param med_nli: [description], defaults to False
-    :type med_nli: bool, optional
-    :param multi_nli: [description], defaults to False
-    :type multi_nli: bool, optional
-    :param multi_nli_train_x: [description], defaults to None
-    :type multi_nli_train_x: np.ndarray, optional
-    :param multi_nli_train_y: [description], defaults to None
-    :type multi_nli_train_y: np.ndarray, optional
-    :param multi_nli_test_x: [description], defaults to None
-    :type multi_nli_test_x: np.ndarray, optional
-    :param multi_nli_test_y: [description], defaults to None
-    :type multi_nli_test_y: np.ndarray, optional
-    :param batch_size: [description], defaults to 2
-    :type batch_size: int, optional
-    :param num_epochs: [description], defaults to 1
-    :type num_epochs: int, optional
-    :return: [description]
-    :rtype: [type]
-    """
+def build_sbert_model(model_name):
     if model_name == "covidbert":
         model_name = "deepset/covid_bert_base"
         covid_bert_path = "covid_bert_path"
@@ -291,6 +249,54 @@ def train_sbert_model(model_name,
                                    pooling_mode_max_tokens=False)
     # generating biobert sentence embeddings (mean pooling of sentence embedding vectors)
     sbert_model = SBERTPredictor(word_embedding_model, pooling_model)
+    return sbert_model, tokenizer
+
+
+def train_sbert_model(sbert_model,
+                      tokenizer,
+                      mancon_corpus=False,
+                      med_nli=False,
+                      multi_nli=False,
+                      multi_nli_train_x: np.ndarray = None,
+                      multi_nli_train_y: np.ndarray = None,
+                      multi_nli_test_x: np.ndarray = None,
+                      multi_nli_test_y: np.ndarray = None,
+                      med_nli_train_x: np.ndarray = None,
+                      med_nli_train_y: np.ndarray = None,
+                      med_nli_test_x: np.ndarray = None,
+                      med_nli_test_y: np.ndarray = None,
+                      man_con_train_y: np.ndarray = None,
+                      man_con_train_x: np.ndarray = None,
+                      man_con_test_x: np.ndarray = None,
+                      man_con_test_y: np.ndarray = None,
+                      batch_size: int = 2,
+                      num_epochs: int = 1,
+                      ):
+    """Train SBERT on any NLI dataset.
+
+    :param model_name: model to be used, currently supported: covidbert or biobert
+    :param tokenizer: the tokenizer corresponding to the model being used"
+    :param mancon_corpus: [description], defaults to False
+    :type mancon_corpus: bool, optional
+    :param med_nli: [description], defaults to False
+    :type med_nli: bool, optional
+    :param multi_nli: [description], defaults to False
+    :type multi_nli: bool, optional
+    :param multi_nli_train_x: [description], defaults to None
+    :type multi_nli_train_x: np.ndarray, optional
+    :param multi_nli_train_y: [description], defaults to None
+    :type multi_nli_train_y: np.ndarray, optional
+    :param multi_nli_test_x: [description], defaults to None
+    :type multi_nli_test_x: np.ndarray, optional
+    :param multi_nli_test_y: [description], defaults to None
+    :type multi_nli_test_y: np.ndarray, optional
+    :param batch_size: [description], defaults to 2
+    :type batch_size: int, optional
+    :param num_epochs: [description], defaults to 1
+    :type num_epochs: int, optional
+    :return: [description]
+    :rtype: [type]
+    """
     if multi_nli:
         if multi_nli_train_x is not None:
 
