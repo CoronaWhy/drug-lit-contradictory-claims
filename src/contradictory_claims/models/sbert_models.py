@@ -41,8 +41,8 @@ class SBERTPredictor(SentenceTransformer):
         """
         super().__init__()
         self.embedding_model = SentenceTransformer(modules=[word_embedding_model, pooling_model], device=device)
-        # self.linear = nn.Linear(6912, num_classes)
-        self.linear = nn.Linear(2304, num_classes)
+        self.linear = nn.Linear(6912, num_classes)
+        # self.linear = nn.Linear(2304, num_classes)
         # self.sigmoid = nn.Sigmoid()
         # self.softmax = nn.Softmax(dim=1)
         if device is None:
@@ -60,9 +60,9 @@ class SBERTPredictor(SentenceTransformer):
         :rtype: torch.Tensor
         """
         sentence1_embedding = torch.tensor(self.embedding_model.encode(sentence1, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 768)
+                                           device=self._target_device).reshape(-1, 2304)
         sentence2_embedding = torch.tensor(self.embedding_model.encode(sentence2, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 768)
+                                           device=self._target_device).reshape(-1, 2304)
         net_vector = torch.cat((sentence1_embedding, sentence2_embedding,
                                 torch.abs(sentence1_embedding - sentence2_embedding)), 1)
         # net_vector = torch.cat((sentence1_embedding, sentence2_embedding), 1)
@@ -245,8 +245,8 @@ def build_sbert_model(model_name):
     shutil.rmtree(model_save_path)
     pooling_model = models.Pooling(768,
                                    pooling_mode_mean_tokens=True,
-                                   pooling_mode_cls_token=False,
-                                   pooling_mode_max_tokens=False)
+                                   pooling_mode_cls_token=True,
+                                   pooling_mode_max_tokens=True)
     # generating biobert sentence embeddings (mean pooling of sentence embedding vectors)
     sbert_model = SBERTPredictor(word_embedding_model, pooling_model)
     return sbert_model, tokenizer
