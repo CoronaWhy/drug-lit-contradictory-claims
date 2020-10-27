@@ -287,8 +287,8 @@ def train_sbert_model(model_name,
     shutil.rmtree(model_save_path)
     pooling_model = models.Pooling(768,
                                    pooling_mode_mean_tokens=True,
-                                   pooling_mode_cls_token=True,
-                                   pooling_mode_max_tokens=True)
+                                   pooling_mode_cls_token=False,
+                                   pooling_mode_max_tokens=False)
     # generating biobert sentence embeddings (mean pooling of sentence embedding vectors)
     sbert_model = SBERTPredictor(word_embedding_model, pooling_model)
     if multi_nli:
