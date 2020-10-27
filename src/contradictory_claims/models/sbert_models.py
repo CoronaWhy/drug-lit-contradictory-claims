@@ -239,7 +239,7 @@ def train_sbert_model(model_name,
                       ):
     """Train SBERT on any NLI dataset.
 
-    :param model_name: model to be used, currently supported: deepset/covid_bert_base or biobert
+    :param model_name: model to be used, currently supported: covidbert or biobert
     :param mancon_corpus: [description], defaults to False
     :type mancon_corpus: bool, optional
     :param med_nli: [description], defaults to False
@@ -261,7 +261,8 @@ def train_sbert_model(model_name,
     :return: [description]
     :rtype: [type]
     """
-    if model_name == "deepset/covid_bert_base":
+    if model_name == "covidbert":
+        model_name = "deepset/covid_bert_base"
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path
         os.makedirs(model_save_path, exist_ok=True)
