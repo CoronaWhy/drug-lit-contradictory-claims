@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import os
 import time
 
 import numpy as np
@@ -268,3 +269,44 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
     return model
+
+
+def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: str = 'output/bluebert_transformer'):
+    """
+    Save fine-tuned Bluebert model.
+
+    :param model: fine-tuned Bluebert model
+    :param timed_dir_name: if True, save model to a directory where date is recorded
+    :param bluebert_save_path: directory to save model
+    """
+    if timed_dir_name:
+        now = datetime.datetime.now()
+        bluebert_save_path = os.path.join(bluebert_save_path, f"{now.month}-{now.day}-{now.year}")
+
+    if not os.path.exists(bluebert_save_path):
+        os.makedirs(bluebert_save_path)
+
+    torch.save(model, bluebert_save_path)
+    return
+
+
+def bluebert_load_model(bluebert_model_path: str):
+    """
+    Load fine-tuned Bluebert model.
+
+    :param bluebert_model_path: directory with saved model
+    :return: fine-tuned Bluebert Transformer model
+    :return device: CPU vs GPU definition for torch
+    """
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print('There are ', torch.cuda.device_count(), ' GPU(s) available.')  # noqa: T001
+        print('We will use the GPU:', torch.cuda.get_device_name(0))  # noqa: T001
+    else:
+        print('No GPU available, using the CPU instead.')  # noqa: T001
+        device = torch.device("cpu")
+    
+    model = torch.load(bluebert_model_path)
+    model.to(device)
+    
+    return model, device

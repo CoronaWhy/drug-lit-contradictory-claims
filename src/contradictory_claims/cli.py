@@ -8,6 +8,7 @@ import shutil
 import click
 import pandas as pd
 
+from .bluebert_evaluate_model import bluebert_make_predictions
 from .data.make_dataset import \
     load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
@@ -15,7 +16,8 @@ from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     filter_section_with_drugs, merge_section_text
 from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
-from .models.bluebert_train_model import bluebert_create_model, bluebert_create_train_model
+from .models.bluebert_train_model import bluebert_create_train_model,\
+    bluebert_load_model, bluebert_save_model
 from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
@@ -24,19 +26,22 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--extract/--no-extract', 'extract', default=False)
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
+@click.argument('bluebert_model_path')
 @click.option('--report/--no-report', 'report', default=False)
+@click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
-def main(extract, train, bluebert_train, report, cord_version):
+def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, cord_version):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
     model_id = "biomed_roberta"
+	bluebert_model_id = "bluebert"
     # Find path of bluebert cloned repo containing pretrained model
     if bluebert_train:
-        for root, dirs, files in os.walk("C:/"):
+        for root, dirs, _files in os.walk("C:/"):
             for name in dirs:
                 if name == 'bluebert':
-                    bluebert_repo_path = os.path.abspath(os.path.join(root,name))
+                    bluebert_repo_path = os.path.abspath(os.path.join(root, name))
                     break
 
     # File paths
@@ -176,9 +181,11 @@ def main(extract, train, bluebert_train, report, cord_version):
                                                              med_nli_test_x, med_nli_test_y,
                                                              man_con_train_x, man_con_train_y,
                                                              man_con_test_x, man_con_test_y,
-                                                             bluebert_pretrained_path)
+                                                             bluebert_repo_path)
+        # Save model
+        bluebert_save_model(bluebert_trained_model)
     else:
-        bluebert_trained_model, _ = bluebert_create_model(bluebert_pretrained_path)
+        bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
@@ -194,6 +201,23 @@ def main(extract, train, bluebert_train, report, cord_version):
         # Now create the report
         out_report_dir = os.path.join(trained_model_out_dir)
         create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir, out_plot_dir=trained_model_out_dir)
+	
+	if bluebert_report:
+        eval_data_dir = os.path.join(root_dir, "input")
+        # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
+        # active_sheet = "drug_individual_claims_similari"
+        eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
+        active_sheet = "All_phase2"
+        eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
+
+        # Make predictions using trained model
+        eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
+											  model=bluebert_trained_model, device=device,
+											  model_name='bluebert')
+
+        # Now create the report
+        out_report_dir = os.path.join(bluebert_model_path,'reports')
+        create_report(eval_data, model_id=bluebert_model_id, out_report_dir=out_report_dir, out_plot_dir=out_report_dir)
 
 
 if __name__ == '__main__':
