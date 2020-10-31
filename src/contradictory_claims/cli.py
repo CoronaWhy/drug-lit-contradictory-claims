@@ -35,7 +35,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
     model_id = "biomed_roberta"
-	bluebert_model_id = "bluebert"
+    bluebert_model_id = "bluebert"
     # Find path of bluebert cloned repo containing pretrained model
     if bluebert_train:
         for root, dirs, _files in os.walk("C:/"):
@@ -201,8 +201,8 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         # Now create the report
         out_report_dir = os.path.join(trained_model_out_dir)
         create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir, out_plot_dir=trained_model_out_dir)
-	
-	if bluebert_report:
+
+    if bluebert_report:
         eval_data_dir = os.path.join(root_dir, "input")
         # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
         # active_sheet = "drug_individual_claims_similari"
@@ -212,11 +212,11 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
         # Make predictions using trained model
         eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
-											  model=bluebert_trained_model, device=device,
-											  model_name='bluebert')
+                                              model=bluebert_trained_model, device=device,
+                                              model_name='bluebert')
 
         # Now create the report
-        out_report_dir = os.path.join(bluebert_model_path,'reports')
+        out_report_dir = os.path.join(bluebert_model_path, 'reports')
         create_report(eval_data, model_id=bluebert_model_id, out_report_dir=out_report_dir, out_plot_dir=out_report_dir)
 
 

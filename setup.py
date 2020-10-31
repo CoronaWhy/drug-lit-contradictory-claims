@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import shutil
 
 import setuptools
 
@@ -24,8 +25,8 @@ if __name__ == '__main__':
               "--tf_checkpoint_path=" + bluebert_repo_path + "/bert_model.ckpt "\
               "--bert_config_file=" + bluebert_repo_path + "/bert_config.json "\
               "--pytorch_dump_path=" + bluebert_repo_path + "/pytorch_model.bin"
-    #TODO: Is there a way around this?
-    os.system(command)  #noqa: S605
+    # TODO: Is there a way around this?
+    os.system(command)  # noqa: S605
     source_file = os.path.join(bluebert_repo_path, "bert_config.json")
     target_file = os.path.join(bluebert_repo_path, "config.json")
     shutil.copy(source_file, target_file)

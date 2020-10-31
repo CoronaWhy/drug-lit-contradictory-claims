@@ -305,8 +305,8 @@ def bluebert_load_model(bluebert_model_path: str):
     else:
         print('No GPU available, using the CPU instead.')  # noqa: T001
         device = torch.device("cpu")
-    
+
     model = torch.load(bluebert_model_path)
     model.to(device)
-    
+
     return model, device
