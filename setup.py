@@ -2,9 +2,6 @@
 
 # -*- coding: utf-8 -*-
 
-import os
-import shutil
-
 import setuptools
 
 if __name__ == '__main__':
