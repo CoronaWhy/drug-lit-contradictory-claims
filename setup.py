@@ -11,14 +11,14 @@ if __name__ == '__main__':
     setuptools.setup()
     # Setup for Bluebert model
     # TODO: Searching "C:/" works on the local system but fails in tox. How to make this universal?
-    for root, _dirs, files in os.walk("C:/"):
+    for root, _dirs, files in os.walk("."):
         for name in files:
             if name == 'convert_bert_original_tf_checkpoint_to_pytorch.py':
                 python_file_path = os.path.abspath(root)
                 break
-    for root, dirs, _files in os.walk("C:/"):
+    for root, dirs, _files in os.walk("."):
         for name in dirs:
-            if name == 'bluebert':
+            if name == 'bluebert_model_init':
                 bluebert_repo_path = os.path.abspath(os.path.join(root, name))
                 break
     command = "python " + python_file_path + "/convert_bert_original_tf_checkpoint_to_pytorch.py "\

@@ -38,9 +38,9 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     bluebert_model_id = "bluebert"
     # Find path of bluebert cloned repo containing pretrained model
     if bluebert_train:
-        for root, dirs, _files in os.walk("C:/"):
+        for root, dirs, _files in os.walk("."):
             for name in dirs:
-                if name == 'bluebert':
+                if name == 'bluebert_model_init':
                     bluebert_repo_path = os.path.abspath(os.path.join(root, name))
                     break
 
