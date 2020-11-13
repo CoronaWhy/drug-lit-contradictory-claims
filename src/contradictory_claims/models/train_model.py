@@ -200,29 +200,32 @@ def train_model(multi_nli_train_x: np.ndarray,
     # First load the real tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
-    multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with multi_nli_train_x_str")  # noqa: T001
+    if use_multi_nli:
+        multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
+        multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with multi_nli_train_x_str")  # noqa: T001
 
-    multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
-    multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with multi_nli_test_x_str")  # noqa: T001
+        multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
+        multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with multi_nli_test_x_str")  # noqa: T001
 
-    med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
-    med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with med_nli_train_x_str")  # noqa: T001
+    if use_med_nli:
+        med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
+        med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with med_nli_train_x_str")  # noqa: T001
 
-    med_nli_test_x_str = [str(sen) for sen in med_nli_test_x]
-    med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with med_nli_test_x_str")  # noqa: T001
+        med_nli_test_x_str = [str(sen) for sen in med_nli_test_x]
+        med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with med_nli_test_x_str")  # noqa: T001
 
-    man_con_train_x_str = [str(sen) for sen in man_con_train_x]
-    man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with man_con_train_x_str")  # noqa: T001
+    if use_man_con:
+        man_con_train_x_str = [str(sen) for sen in man_con_train_x]
+        man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with man_con_train_x_str")  # noqa: T001
 
-    man_con_test_x_str = [str(sen) for sen in man_con_test_x]
-    man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
-    print("Done with man_con_test_x_str")  # noqa: T001
+        man_con_test_x_str = [str(sen) for sen in man_con_test_x]
+        man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with man_con_test_x_str")  # noqa: T001
 
     es = EarlyStopping(monitor='val_accuracy',
                        min_delta=0.001,
@@ -268,36 +271,39 @@ def train_model(multi_nli_train_x: np.ndarray,
     # Initialize WandB for tracking the training progress
     wandb.init(dir="./wandb_artifacts")
 
-    train_history = []
+    train_hist_list = []
 
     # Fine tune on MultiNLI
     if use_multi_nli:
-        train_history[0] = model.fit(multi_nli_train_x,
-                                     multi_nli_train_y,
-                                     batch_size=batch_size,
-                                     validation_data=(multi_nli_test_x, multi_nli_test_y),
-                                     callbacks=[es, WandbCallback()],
-                                     epochs=epochs)
+        train_history = model.fit(multi_nli_train_x,
+                                  multi_nli_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(multi_nli_test_x, multi_nli_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+        train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
         print(train_history)  # noqa: T001
 
     # Fine tune on MedNLI
     if use_med_nli:
-        train_history[1] = model.fit(med_nli_train_x,
-                                     med_nli_train_y,
-                                     batch_size=batch_size,
-                                     validation_data=(med_nli_test_x, med_nli_test_y),
-                                     callbacks=[es, WandbCallback()],
-                                     epochs=epochs)
+        train_history = model.fit(med_nli_train_x,
+                                  med_nli_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(med_nli_test_x, med_nli_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+        train_hist_list.append(train_history)
 
     # Fine tune on ManConCorpus
     if use_man_con:
-        train_history[2] = model.fit(man_con_train_x,
-                                     man_con_train_y,
-                                     batch_size=batch_size,
-                                     validation_data=(man_con_test_x, man_con_test_y),
-                                     callbacks=[es, WandbCallback()],
-                                     epochs=epochs)
+        train_history = model.fit(man_con_train_x,
+                                  man_con_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(man_con_test_x, man_con_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+        train_hist_list.append(train_history)
 
-    return model, train_history
+    return model, train_hist_list
