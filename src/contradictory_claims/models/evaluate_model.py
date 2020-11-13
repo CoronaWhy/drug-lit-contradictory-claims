@@ -81,10 +81,10 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
         df['predicted_neu'] = predictions[(2 * len(df)):, 0]
 
     # Calculate predicted class as the max predicted label
-        df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
-        df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
-                                               'predicted_ent': 'entailment',
-                                               'predicted_neu': 'neutral'}, inplace=True)
+	df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
+	df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
+										   'predicted_ent': 'entailment',
+										   'predicted_neu': 'neutral'}, inplace=True)
 
     return df
 
