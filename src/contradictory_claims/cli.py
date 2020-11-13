@@ -165,7 +165,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         out_train_hist_dir = os.path.join(trained_model_out_dir, 'train_history.txt')
         with open(out_train_hist_dir, 'w') as f:
             for item in train_history:
-                f.write(item + "\n")
+                f.write(item.history + "\n")
 
     else:
         transformer_dir = os.path.join(root_dir, trained_model_out_dir)
@@ -199,7 +199,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
         with open(out_train_hist_dir, 'w') as f:
             for item in bluebert_train_hist:
-                f.write(item + "\n")
+                f.write(item.history + "\n")
 
     else:
         bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
