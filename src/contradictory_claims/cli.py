@@ -213,7 +213,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
 
         # Make predictions using trained model
-        eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name)
+        eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)
 
         # Now create the report
         out_report_dir = os.path.join(trained_model_out_dir)
@@ -230,7 +230,8 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         # Make predictions using trained model
         eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
                                               model=bluebert_trained_model, device=device,
-                                              model_name='bluebert')
+                                              model_name='bluebert',
+                                              multi_class=multi_class)
 
         # Now create the report
         out_report_dir = os.path.join(bluebert_out_dir, 'reports')
