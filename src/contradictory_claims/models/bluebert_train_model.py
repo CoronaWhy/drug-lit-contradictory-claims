@@ -226,11 +226,16 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 man_con_train_y: np.ndarray,
                                 man_con_test_x: np.ndarray,
                                 man_con_test_y: np.ndarray,
+                                cord_train_x: np.ndarray,
+                                cord_train_y: np.ndarray,
+                                cord_test_x: np.ndarray,
+                                cord_test_y: np.ndarray,
                                 bluebert_pretrained_path: str,
                                 multi_class: bool = True,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
-                                use_man_con: bool = True):
+                                use_man_con: bool = True,
+                                use_cord: bool = True):
     """
     Create and train the Bluebert Transformer model.
 
@@ -246,49 +251,73 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param man_con_train_y: ManConCorpus training labels
     :param man_con_test_x: ManConCorpus test sentence pairs
     :param man_con_test_y: ManConCorpus test labels
+    :param cord_train_x: CORD-19 training sentence pairs
+    :param cord_train_y: CORD-19 training labels
+    :param cord_test_x: CORD-19 test sentence pairs
+    :param cord_test_y: CORD-19 test labels
     :param bluebert_pretrained_path: path to pretrained bluebert model, or huggingface model name
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
     :param use_multi_nli: if True, use MultiNLI in fine-tuning
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
+    :param use_cord: if True, use CORD-19 in fine-tuning
     :return: fine-tuned Bluebert Transformer model
     """
     # Create model
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
     # Package data into a DataLoader
-    multinli_x_train_dataset = ContraDataset(multi_nli_train_x.to_list(), multi_nli_train_y, tokenizer, max_len=512,
+    if use_multi_nli:
+        multinli_x_train_dataset = ContraDataset(multi_nli_train_x.to_list(), multi_nli_train_y, tokenizer, max_len=512,
+                                                 multi_class=multi_class)
+        multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
+        multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
+                                                 sampler=multinli_x_train_sampler, batch_size=32)
+
+    if use_med_nli:
+        mednli_x_train_dataset = ContraDataset(med_nli_train_x.to_list(), med_nli_train_y, tokenizer, max_len=512,
+                                               multi_class=multi_class)
+        mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
+        mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=32)
+
+    if use_man_con:
+        mancon_x_train_dataset = ContraDataset(man_con_train_x.to_list(), man_con_train_y, tokenizer, max_len=512,
+                                               multi_class=multi_class)
+        mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
+        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=32)
+
+    if use_cord:
+        cord_x_train_dataset = ContraDataset(cord_train_x.to_list(), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
-    multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
-    multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset, sampler=multinli_x_train_sampler, batch_size=32)
+        cord_x_train_sampler = RandomSampler(cord_x_train_dataset)
+        cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=32)
 
-    mednli_x_train_dataset = ContraDataset(med_nli_train_x.to_list(), med_nli_train_y, tokenizer, max_len=512,
-                                           multi_class=multi_class)
-    mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
-    mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=32)
-
-    mancon_x_train_dataset = ContraDataset(man_con_train_x.to_list(), man_con_train_y, tokenizer, max_len=512,
-                                           multi_class=multi_class)
-    mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
-    mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=32)
-
-    losses = []
+    losses_list = []
 
     # Fine tune model on MultiNLI
     if use_multi_nli:
-        model, losses[0] = bluebert_train_model(model, multinli_x_train_dataloader, device)
-    print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
+        model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device)
+        losses_list.append(losses_list)
+        print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
-        model, losses[1] = bluebert_train_model(model, mednli_x_train_dataloader, device)
-    print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
+        model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device)
+        losses_list.append(losses_list)
+        print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
-        model, losses[2] = bluebert_train_model(model, mancon_x_train_dataloader, device)
-    print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
+        model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device)
+        losses_list.append(losses_list)
+        print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
+
+    # Fine tune model on CORD
+    if use_cord:
+        model, losses = bluebert_train_model(model, cord_x_train_dataloader, device)
+        losses_list.append(losses_list)
+        print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 
     return model, losses
 

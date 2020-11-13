@@ -5,6 +5,7 @@
 import json
 
 import pandas as pd
+from contradictory_claims.models.evaluate_model import read_data_from_excel
 from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
@@ -231,3 +232,57 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     virus_names = list(virus_names[0])
 
     return drug_names, virus_names
+
+
+def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True):
+    """
+    Load CORD-19 annotated claim pairs for training.
+
+    :param data_path: path to CORD training data
+    :param active_sheet: name of active sheet with data
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
+    :return: CORD-19 sentence pairs and labels for training and test sets, respectively
+    """
+    cord_data = read_data_from_excel(data_path, active_sheet)
+
+    cord_data['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                          label in cord_data.annotation]
+    print(f"Number of contradiction pairs: {len(cord_data[cord_data.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(cord_data[cord_data.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(cord_data[cord_data.label == 0])}")  # noqa: T001
+
+    # Insert the CLS and SEP tokens
+    x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
+        '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2)
+    if multi_class:
+        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
+        x_test = x_test.to_numpy()
+
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(y_train_tmp)
+        y_test = np_utils.to_categorical(y_test_tmp)
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = x_train + '[SEP]' + 'CON'
+        x_train_2 = x_train + '[SEP]' + 'ENT'
+        x_train_3 = x_train + '[SEP]' + 'NEU'
+        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train.to_numpy()
+        x_test_1 = x_test + '[SEP]' + 'CON'
+        x_test_2 = x_test + '[SEP]' + 'ENT'
+        x_test_3 = x_test + '[SEP]' + 'NEU'
+        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
+        y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
+        y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
+        y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
+        y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
+        y_test = y_test_1 + y_test_2 + y_test_3
+
+    return x_train, y_train, x_test, y_test

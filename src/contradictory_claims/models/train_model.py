@@ -147,6 +147,10 @@ def train_model(multi_nli_train_x: np.ndarray,
                 man_con_train_y: np.ndarray,
                 man_con_test_x: np.ndarray,
                 man_con_test_y: np.ndarray,
+                cord_train_x: np.ndarray,
+                cord_train_y: np.ndarray,
+                cord_test_x: np.ndarray,
+                cord_test_y: np.ndarray,
                 drug_names: list,
                 virus_names: list,
                 model_name: str,
@@ -157,6 +161,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 use_multi_nli: bool = True,
                 use_med_nli: bool = True,
                 use_man_con: bool = True,
+                use_cord: bool = True,
                 epochs: int = 3,
                 max_len: int = 512,
                 batch_size: int = 32):
@@ -175,6 +180,10 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param man_con_train_y: ManConCorpus training labels
     :param man_con_test_x: ManConCorpus test sentence pairs
     :param man_con_test_y: ManConCorpus test labels
+    :param cord_train_x: CORD-19 training sentence pairs
+    :param cord_train_y: CORD-19 training labels
+    :param cord_test_x: CORD-19 test sentence pairs
+    :param cord_test_y: CORD-19 test labels
     :param drug_names: drug lexicon list
     :param virus_names: virus lexicon list
     :param model_name: model name to load from the pre-trained Transformers package. Expecting either
@@ -189,6 +198,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param use_multi_nli: if True, use MultiNLI in fine-tuning
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
+    :param use_cord: if True, use CORD-19 in fine-tuning
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
@@ -226,6 +236,15 @@ def train_model(multi_nli_train_x: np.ndarray,
         man_con_test_x_str = [str(sen) for sen in man_con_test_x]
         man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with man_con_test_x_str")  # noqa: T001
+
+    if use_cord:
+        cord_train_x_str = [str(sen) for sen in cord_train_x]
+        cord_train_x = regular_encode(cord_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with cord_train_x_str")  # noqa: T001
+
+        cord_test_x_str = [str(sen) for sen in cord_test_x]
+        cord_test_x = regular_encode(cord_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with cord_test_x_str")  # noqa: T001
 
     es = EarlyStopping(monitor='val_accuracy',
                        min_delta=0.001,
@@ -302,6 +321,16 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+        train_hist_list.append(train_history)
+
+    # Fine tune on CORD-19
+    if use_cord:
+        train_history = model.fit(cord_train_x,
+                                  cord_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(cord_test_x, cord_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs)
         train_hist_list.append(train_history)
