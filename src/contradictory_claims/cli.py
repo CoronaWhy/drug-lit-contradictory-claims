@@ -26,36 +26,33 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--extract/--no-extract', 'extract', default=False)
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
-@click.argument('bluebert_model_path')
+@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
 @click.option('--report/--no-report', 'report', default=False)
 @click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
+@click.option('--multi_class/--binary_class', 'multi_class', default=True)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
-def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, cord_version):
+def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, multi_class, cord_version):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
     model_id = "biomed_roberta"
     bluebert_model_id = "bluebert"
     # Find path of bluebert cloned repo containing pretrained model
-    if bluebert_train:
-        for root, dirs, _files in os.walk("."):
-            for name in dirs:
-                if name == 'bluebert_model_init':
-                    bluebert_repo_path = os.path.abspath(os.path.join(root, name))
-                    break
+    # if bluebert_train:
+    #     for root, dirs, _files in os.walk("."):
+    #         for name in dirs:
+    #             if name == 'bluebert_model_init':
+    #                 bluebert_repo_path = os.path.abspath(os.path.join(root, name))
+    #                 break
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
     trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
+    bluebert_out_dir = 'output/transformer/bluebert'
 
     # CORD-19 metadata path
-    # NOTE: I'd like to discuss how we want to establish naming conventions around CORD-19 input directory
-    # metadata_path = os.path.join(root_dir, 'input/cord19/metadata.csv')
-    # metadata_path = os.path.join(root_dir, 'input/2020-08-10/metadata.csv')
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
 
-    # json_text_file_dir = os.path.join(root_dir, 'input/cord19/json.zip')
-    # json_text_file_dir = os.path.join(root_dir, 'input/2020-08-10/document_parses.tar.gz')
     json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
@@ -139,19 +136,23 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     if train:
         # Load BERT train and test data
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path)
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path)
+            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs)
+            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         # Train model
-        trained_model, _ = train_model(multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y,
-                                       med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y,
-                                       man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y,
-                                       drug_names, virus_names,
-                                       model_name=model_name)
+        trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
+                                                   multi_nli_test_x, multi_nli_test_y,
+                                                   med_nli_train_x, med_nli_train_y,
+                                                   med_nli_test_x, med_nli_test_y,
+                                                   man_con_train_x, man_con_train_y,
+                                                   man_con_test_x, man_con_test_y,
+                                                   drug_names, virus_names,
+                                                   model_name=model_name,
+                                                   multi_class=multi_class)
 
         # Save model
         out_dir = 'output/working/biomed_roberta_base/'
@@ -159,31 +160,47 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
+
+        # Save model train history
+        out_train_hist_dir = os.path.join(trained_model_out_dir, 'train_history.txt')
+        with open(out_train_hist_dir, 'w') as f:
+            for item in train_history:
+                f.write(item + "\n")
+
     else:
         transformer_dir = os.path.join(root_dir, trained_model_out_dir)
         pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
-        trained_model = load_model(pickle_file, transformer_dir)
+        trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
 
     if bluebert_train:
         # Load BERT train and test data
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path)
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path)
+            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs)
+            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         # Train model
-        bluebert_trained_model = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
-                                                             multi_nli_test_x, multi_nli_test_y,
-                                                             med_nli_train_x, med_nli_train_y,
-                                                             med_nli_test_x, med_nli_test_y,
-                                                             man_con_train_x, man_con_train_y,
-                                                             man_con_test_x, man_con_test_y,
-                                                             bluebert_repo_path)
+        bluebert_trained_model,\
+            bluebert_train_hist = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
+                                                              multi_nli_test_x, multi_nli_test_y,
+                                                              med_nli_train_x, med_nli_train_y,
+                                                              med_nli_test_x, med_nli_test_y,
+                                                              man_con_train_x, man_con_train_y,
+                                                              man_con_test_x, man_con_test_y,
+                                                              bluebert_model_path,
+                                                              multi_class=multi_class)
         # Save model
         bluebert_save_model(bluebert_trained_model)
+
+        # Save model train history
+        out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
+        with open(out_train_hist_dir, 'w') as f:
+            for item in bluebert_train_hist:
+                f.write(item + "\n")
+
     else:
         bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
 
@@ -216,7 +233,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
                                               model_name='bluebert')
 
         # Now create the report
-        out_report_dir = os.path.join(bluebert_model_path, 'reports')
+        out_report_dir = os.path.join(bluebert_out_dir, 'reports')
         create_report(eval_data, model_id=bluebert_model_id, out_report_dir=out_report_dir, out_plot_dir=out_report_dir)
 
 

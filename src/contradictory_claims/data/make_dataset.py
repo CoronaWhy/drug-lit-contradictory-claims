@@ -9,12 +9,14 @@ from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
 
-def load_multi_nli(train_path: str, test_path: str):
+def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
     """
     Load MultiNLI data for training.
 
     :param train_path: path to MultiNLI training data
     :param test_path: path to MultiNLI test data
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
     :return: MultiNLI sentence pairs and labels for training and test sets, respectively
     """
     multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False)
@@ -27,19 +29,49 @@ def load_multi_nli(train_path: str, test_path: str):
                                         label in multinli_test_data.gold_label]
 
     # Insert the CLS and SEP tokens
-    x_train = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2
-    x_train = x_train.to_numpy()
-    x_test = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2
-    x_test = x_test.to_numpy()
+    if multi_class:
+        x_train = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2
+        x_train = x_train.to_numpy()
+        x_test = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2
+        x_test = x_test.to_numpy()
 
-    # Reformat to one-hot categorical variable (3 columns)
-    y_train = np_utils.to_categorical(multinli_train_data.gold_label, dtype='int')
-    y_test = np_utils.to_categorical(multinli_test_data.gold_label, dtype='int')
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(multinli_train_data.gold_label, dtype='int')
+        y_test = np_utils.to_categorical(multinli_test_data.gold_label, dtype='int')
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2 +\
+                    '[SEP]' + 'CON'
+        x_train_2 = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2 +\
+                    '[SEP]' + 'ENT'
+        x_train_3 = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2 +\
+                    '[SEP]' + 'NEU'
+        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train.to_numpy()
+        x_test_1 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
+                   '[SEP]' + 'CON'
+        x_test_2 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
+                   '[SEP]' + 'ENT'
+        x_test_3 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
+                   '[SEP]' + 'NEU'
+        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in multinli_train_data.gold_label]
+        y_train_2 = [1 if label == 1 else 0 for label in multinli_train_data.gold_label]
+        y_train_3 = [1 if label == 0 else 0 for label in multinli_train_data.gold_label]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_test_1 = [1 if label == 2 else 0 for label in multinli_test_data.gold_label]
+        y_test_2 = [1 if label == 1 else 0 for label in multinli_test_data.gold_label]
+        y_test_3 = [1 if label == 0 else 0 for label in multinli_test_data.gold_label]
+        y_test = y_test_1 + y_test_2 + y_test_3
 
     return x_train, y_train, x_test, y_test
 
 
-def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pairs_per_class: int = None):
+def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pairs_per_class: int = None,
+                 multi_class: bool = True):
     """
     Load MedNLI data for training.
 
@@ -48,6 +80,8 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
     :param test_path: path to MedNLI test data
     :param num_training_pairs_per_class: number of pairs of sentences to retrieve per class.
         If None, all sentence pairs are retrieved
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
     :return: MedNLI sentence pairs and labels for training and test sets, respectively
     """
     # Question: how do you have long docstrings that violate character limit but not get flake8 on my case
@@ -85,24 +119,56 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
             .reset_index(drop=True)
 
     # Insert the CLS and SEP tokens
-    x_train = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2
-    x_train = x_train.to_numpy()
-    x_test = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2
-    x_test = x_test.to_numpy()
+    if multi_class:
+        x_train = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2
+        x_train = x_train.to_numpy()
+        x_test = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2
+        x_test = x_test.to_numpy()
 
-    # Reformat to one-hot categorical variable (3 columns)
-    y_train = np_utils.to_categorical(mednli_data.gold_label)
-    y_test = np_utils.to_categorical(mednli_test_data.gold_label)
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(mednli_data.gold_label)
+        y_test = np_utils.to_categorical(mednli_test_data.gold_label)
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2 +\
+                    '[SEP]' + 'CON'
+        x_train_2 = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2 +\
+                    '[SEP]' + 'ENT'
+        x_train_3 = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2 +\
+                    '[SEP]' + 'NEU'
+        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train.to_numpy()
+        x_test_1 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
+                   '[SEP]' + 'CON'
+        x_test_2 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
+                   '[SEP]' + 'ENT'
+        x_test_3 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
+                   '[SEP]' + 'NEU'
+        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in mednli_data.gold_label]
+        y_train_2 = [1 if label == 1 else 0 for label in mednli_data.gold_label]
+        y_train_3 = [1 if label == 0 else 0 for label in mednli_data.gold_label]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_test_1 = [1 if label == 2 else 0 for label in mednli_test_data.gold_label]
+        y_test_2 = [1 if label == 1 else 0 for label in mednli_test_data.gold_label]
+        y_test_3 = [1 if label == 0 else 0 for label in mednli_test_data.gold_label]
+        y_test = y_test_1 + y_test_2 + y_test_3
 
     return x_train, y_train, x_test, y_test
 
 
-def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str):  # noqa: D205,D400
+def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
+                                       multi_class: bool = True):  # noqa: D205,D400
     """
     Load ManConCorpus data. NOTE: this data must be preprocessed as sentence pairs. This format is a TSV with four
         columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
 
     :param mancon_sent_pair_path: path to ManCon sentence pair file
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
     :return: ManConCorpus sentence pairs and labels for training and test sets, respectively
     """
     mancon_data = pd.read_csv(mancon_sent_pair_path, sep='\t')
@@ -113,14 +179,37 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str):  # noqa: D20
     print(f"Number of neutral pairs: {len(mancon_data[mancon_data.label == 0])}")  # noqa: T001
 
     # Insert the CLS and SEP tokens
-    x_train, x_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + mancon_data.text_a + '[SEP]' + mancon_data.text_b, mancon_data['label'], test_size=0.2)
-    x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
-    x_test = x_test.to_numpy()
+    if multi_class:
+        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
+        x_test = x_test.to_numpy()
 
-    # Reformat to one-hot categorical variable (3 columns)
-    y_train = np_utils.to_categorical(y_train)
-    y_test = np_utils.to_categorical(y_test)
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(y_train_tmp)
+        y_test = np_utils.to_categorical(y_test_tmp)
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = x_train + '[SEP]' + 'CON'
+        x_train_2 = x_train + '[SEP]' + 'ENT'
+        x_train_3 = x_train + '[SEP]' + 'NEU'
+        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train.to_numpy()
+        x_test_1 = x_test + '[SEP]' + 'CON'
+        x_test_2 = x_test + '[SEP]' + 'ENT'
+        x_test_3 = x_test + '[SEP]' + 'NEU'
+        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
+        y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
+        y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
+        y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
+        y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
+        y_test = y_test_1 + y_test_2 + y_test_3
 
     return x_train, y_train, x_test, y_test
 

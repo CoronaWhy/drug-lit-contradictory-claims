@@ -17,10 +17,10 @@ from transformers import AdamW, BertModel, BertTokenizer,\
 class ContraDataset(Dataset):
     """Dataset loader."""
 
-    def __init__(self, claims, labels, tokenizer, max_len=512):
+    def __init__(self, claims, labels, tokenizer, max_len=512, multi_class=True):
         """Initialize."""
         self.tokenizer = tokenizer
-        self.claims = torch.tensor(self.regular_encode(claims, max_len=max_len))
+        self.claims = torch.tensor(self.regular_encode(claims, max_len=max_len, multi_class=multi_class))
         self.att_mask = torch.zeros(self.claims.size())
         self.att_mask = torch.where(self.claims <= self.att_mask, self.att_mask, torch.ones(self.claims.size()))
         self.labels = labels
@@ -34,8 +34,12 @@ class ContraDataset(Dataset):
         """Get length of data."""
         return self.labels.shape[0]
 
-    def regular_encode(self, texts, max_len=512):
+    def regular_encode(self, texts, max_len=512, multi_class=True):
         """Tokenize a batch of sentence as an np.array."""
+        if not multi_class:
+            # If len > max_len, truncate text upto max_len-8 characters and append the 8-character auxillary input
+            texts = [text[:max_len - 8] + text[-8:] if len(text) > max_len else text for text in texts]
+
         enc_di = self.tokenizer.batch_encode_plus(texts,
                                                   return_token_type_ids=False,
                                                   padding='max_length',
@@ -47,12 +51,16 @@ class ContraDataset(Dataset):
 class TorchContraNet(nn.Module):
     """Our transfer learning trained model."""
 
-    def __init__(self, transformer):
+    def __init__(self, transformer, multi_class=True):
         """Define and initialize the layers of the model."""
         super(TorchContraNet, self).__init__()
         self.transformer = transformer
-        self.linear = nn.Linear(768, 3)
-        self.out = nn.Softmax(dim=0)
+        if multi_class:
+            self.linear = nn.Linear(768, 3)
+            self.out = nn.Softmax(dim=0)
+        else:
+            self.linear = nn.Linear(768, 1)
+            self.out = nn.Sigmoid()
 
     def forward(self, claim, mask, label=None):
         """Run the model on inputs."""
@@ -86,11 +94,13 @@ def format_time(elapsed):
     return str(datetime.timedelta(seconds=elapsed_rounded))
 
 
-def bluebert_create_model(bluebert_pretrained_path: str):
+def bluebert_create_model(bluebert_pretrained_path: str, multi_class: bool = True):
     """
     Create the Bluebert Transformer model.
 
     :param bluebert_pretrained_path: path to pretrained bluebert model
+    :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
+        is sigmoid and binary crossentropy is evaluated.
     :return: pretrained Bluebert Transformer model
     :return device: CPU vs GPU definition for torch
     """
@@ -103,14 +113,18 @@ def bluebert_create_model(bluebert_pretrained_path: str):
         device = torch.device("cpu")
 
     # Load pretrained bluebert transformer and tokenizer
+    if multi_class:
+        num_labels = 3
+    else:
+        num_labels = 2
     tokenizer = BertTokenizer.from_pretrained(bluebert_pretrained_path)
     transformer = BertModel.from_pretrained(bluebert_pretrained_path,
-                                            num_labels=3,
+                                            num_labels=num_labels,
                                             output_attentions=False,
                                             output_hidden_states=False)
 
     # Create model
-    model = TorchContraNet(transformer)
+    model = TorchContraNet(transformer, multi_class=multi_class)
     model.train()
     model.to(device)
 
@@ -195,7 +209,7 @@ def bluebert_train_model(model,
         loss_values.append(avg_train_loss)
         print("")  # noqa: T001
         print("  Average training loss: ", avg_train_loss)  # noqa: T001
-        print("  Training epcoh took: ", format_time(time.time() - t0))  # noqa: T001
+        print("  Training epoch took: ", format_time(time.time() - t0))  # noqa: T001
 
     return model, loss_values
 
@@ -213,6 +227,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 man_con_test_x: np.ndarray,
                                 man_con_test_y: np.ndarray,
                                 bluebert_pretrained_path: str,
+                                multi_class: bool = True,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True):
@@ -231,44 +246,51 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param man_con_train_y: ManConCorpus training labels
     :param man_con_test_x: ManConCorpus test sentence pairs
     :param man_con_test_y: ManConCorpus test labels
-    :param bluebert_pretrained_path: path to pretrained bluebert model
+    :param bluebert_pretrained_path: path to pretrained bluebert model, or huggingface model name
+    :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
+        is sigmoid and binary crossentropy is evaluated.
     :param use_multi_nli: if True, use MultiNLI in fine-tuning
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :return: fine-tuned Bluebert Transformer model
     """
     # Create model
-    model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path)
+    model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
     # Package data into a DataLoader
-    multinli_x_train_dataset = ContraDataset(multi_nli_train_x.to_list(), multi_nli_train_y, tokenizer, max_len=512)
+    multinli_x_train_dataset = ContraDataset(multi_nli_train_x.to_list(), multi_nli_train_y, tokenizer, max_len=512,
+                                             multi_class=multi_class)
     multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
-    multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset, sampler=multinli_x_train_sampler, batch_size=4)
+    multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset, sampler=multinli_x_train_sampler, batch_size=32)
 
-    mednli_x_train_dataset = ContraDataset(med_nli_train_x.to_list(), med_nli_train_y, tokenizer, max_len=512)
+    mednli_x_train_dataset = ContraDataset(med_nli_train_x.to_list(), med_nli_train_y, tokenizer, max_len=512,
+                                           multi_class=multi_class)
     mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
-    mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=4)
+    mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=32)
 
-    mancon_x_train_dataset = ContraDataset(man_con_train_x.to_list(), man_con_train_y, tokenizer, max_len=512)
+    mancon_x_train_dataset = ContraDataset(man_con_train_x.to_list(), man_con_train_y, tokenizer, max_len=512,
+                                           multi_class=multi_class)
     mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
-    mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=4)
+    mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=32)
+
+    losses = []
 
     # Fine tune model on MultiNLI
     if use_multi_nli:
-        model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device)
+        model, losses[0] = bluebert_train_model(model, multinli_x_train_dataloader, device)
     print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
-        model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device)
+        model, losses[1] = bluebert_train_model(model, mednli_x_train_dataloader, device)
     print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
-        model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device)
+        model, losses[2] = bluebert_train_model(model, mancon_x_train_dataloader, device)
     print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
-    return model
+    return model, losses
 
 
 def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: str = 'output/bluebert_transformer'):
