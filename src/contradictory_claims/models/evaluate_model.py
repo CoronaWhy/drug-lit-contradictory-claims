@@ -78,7 +78,7 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
         # as the multiclass method.
         df['predicted_con'] = predictions[0:len(df)]
         df['predicted_ent'] = predictions[len(df):(2 * len(df))]
-        df['predicted_neu'] = predictions[(2 * len(df)):, 0]
+        df['predicted_neu'] = predictions[(2 * len(df)):]
 
     # Calculate predicted class as the max predicted label
     df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
