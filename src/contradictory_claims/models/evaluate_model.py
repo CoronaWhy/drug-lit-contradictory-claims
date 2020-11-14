@@ -76,8 +76,8 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
         # Note: For the binary method using auxillary input, after retrieving the prediction probability
         # for each class, we structure the prediction output dataframe in the same format
         # as the multiclass method.
-        df['predicted_con'] = predictions[0:len(df) - 1, 2]
-        df['predicted_ent'] = predictions[len(df):(2 * len(df)) - 1, 1]
+        df['predicted_con'] = predictions[0:len(df)]
+        df['predicted_ent'] = predictions[len(df):(2 * len(df))]
         df['predicted_neu'] = predictions[(2 * len(df)):, 0]
 
     # Calculate predicted class as the max predicted label

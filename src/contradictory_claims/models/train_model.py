@@ -81,11 +81,11 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_de
         lr = 1e-6
 
     if multi_class:
-        model.compile(Adam(lr=lr), loss='categorical_crossentropy',
+        model.compile(Adam(learning_rate=lr), loss='categorical_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
                                tf.keras.metrics.CategoricalAccuracy()])
     else:
-        model.compile(Adam(lr=lr), loss='binary_crossentropy',
+        model.compile(Adam(learning_rate=lr), loss='binary_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
 
     return model
@@ -164,7 +164,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                 use_cord: bool = True,
                 epochs: int = 3,
                 max_len: int = 512,
-                batch_size: int = 32):
+                batch_size: int = 32,
+                lr_decay: bool = False):
     """
     Train the Transformer model.
 
@@ -202,6 +203,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
+    :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
     :return: fine-tuned Transformer model
     """
     if model_name != 'deepset/covid_bert_base':
@@ -266,7 +268,7 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained("covid_bert_base")
             with strategy.scope():
                 model = TFAutoModel.from_pretrained("covid_bert_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class)
+                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
             shutil.rmtree("covid_bert_base")
         else:
             model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
@@ -275,7 +277,7 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained("biomed_roberta_base")
             with strategy.scope():
                 model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class)
+                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
             shutil.rmtree("biomed_roberta_base")
         batch_size = 2 * strategy.num_replicas_in_sync
 
