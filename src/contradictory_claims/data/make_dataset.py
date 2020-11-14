@@ -47,7 +47,8 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
                     '[SEP]' + 'ENT'
         x_train_3 = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2 +\
                     '[SEP]' + 'NEU'
-        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
         x_train = x_train.to_numpy()
         x_test_1 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
                    '[SEP]' + 'CON'
@@ -55,7 +56,8 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
                    '[SEP]' + 'ENT'
         x_test_3 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
                    '[SEP]' + 'NEU'
-        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
         x_test = x_test.to_numpy()
 
         # Reformat to binary variable
@@ -63,10 +65,12 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
         y_train_2 = [1 if label == 1 else 0 for label in multinli_train_data.gold_label]
         y_train_3 = [1 if label == 0 else 0 for label in multinli_train_data.gold_label]
         y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
         y_test_1 = [1 if label == 2 else 0 for label in multinli_test_data.gold_label]
         y_test_2 = [1 if label == 1 else 0 for label in multinli_test_data.gold_label]
         y_test_3 = [1 if label == 0 else 0 for label in multinli_test_data.gold_label]
         y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
 
@@ -137,7 +141,8 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
                     '[SEP]' + 'ENT'
         x_train_3 = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2 +\
                     '[SEP]' + 'NEU'
-        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
         x_train = x_train.to_numpy()
         x_test_1 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
                    '[SEP]' + 'CON'
@@ -145,7 +150,8 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
                    '[SEP]' + 'ENT'
         x_test_3 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
                    '[SEP]' + 'NEU'
-        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
         x_test = x_test.to_numpy()
 
         # Reformat to binary variable
@@ -153,10 +159,12 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
         y_train_2 = [1 if label == 1 else 0 for label in mednli_data.gold_label]
         y_train_3 = [1 if label == 0 else 0 for label in mednli_data.gold_label]
         y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
         y_test_1 = [1 if label == 2 else 0 for label in mednli_test_data.gold_label]
         y_test_2 = [1 if label == 1 else 0 for label in mednli_test_data.gold_label]
         y_test_3 = [1 if label == 0 else 0 for label in mednli_test_data.gold_label]
         y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
 
@@ -194,12 +202,14 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
         x_train_1 = x_train + '[SEP]' + 'CON'
         x_train_2 = x_train + '[SEP]' + 'ENT'
         x_train_3 = x_train + '[SEP]' + 'NEU'
-        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
         x_train = x_train.to_numpy()
         x_test_1 = x_test + '[SEP]' + 'CON'
         x_test_2 = x_test + '[SEP]' + 'ENT'
         x_test_3 = x_test + '[SEP]' + 'NEU'
-        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
         x_test = x_test.to_numpy()
 
         # Reformat to binary variable
@@ -207,10 +217,12 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
         y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
         y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
         y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
         y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
         y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
         y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
         y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
 
@@ -267,12 +279,14 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
         x_train_1 = x_train + '[SEP]' + 'CON'
         x_train_2 = x_train + '[SEP]' + 'ENT'
         x_train_3 = x_train + '[SEP]' + 'NEU'
-        x_train = x_train_1 + x_train_2 + x_train_3
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
         x_train = x_train.to_numpy()
         x_test_1 = x_test + '[SEP]' + 'CON'
         x_test_2 = x_test + '[SEP]' + 'ENT'
         x_test_3 = x_test + '[SEP]' + 'NEU'
-        x_test = x_test_1 + x_test_2 + x_test_3
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
         x_test = x_test.to_numpy()
 
         # Reformat to binary variable
@@ -280,9 +294,11 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
         y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
         y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
         y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
         y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
         y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
         y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
         y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
