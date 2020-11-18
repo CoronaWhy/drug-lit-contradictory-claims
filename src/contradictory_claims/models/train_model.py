@@ -166,7 +166,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 max_len: int = 512,
                 batch_size: int = 32,
                 lr_decay: bool = False,
-                class_weight = True):
+                class_weight: bool = True):
     """
     Train the Transformer model.
 

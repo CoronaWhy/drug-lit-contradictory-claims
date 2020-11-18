@@ -235,7 +235,8 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
-                                use_cord: bool = True):
+                                use_cord: bool = True,
+								batch_size: int = 32):
     """
     Create and train the Bluebert Transformer model.
 
@@ -262,6 +263,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :param use_cord: if True, use CORD-19 in fine-tuning
+	:param batch_size: batch size for fine-tuning
     :return: fine-tuned Bluebert Transformer model
     """
     # Create model
@@ -273,25 +275,26 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                                  multi_class=multi_class)
         multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
         multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
-                                                 sampler=multinli_x_train_sampler, batch_size=32)
+                                                 sampler=multinli_x_train_sampler, batch_size=batch_size)
 
     if use_med_nli:
         mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
         mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
-        mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=32)
+        mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler,
+                                               batch_size=batch_size)
 
     if use_man_con:
         mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
         mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
-        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=32)
+        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=batch_size)
 
     if use_cord:
         cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
         cord_x_train_sampler = RandomSampler(cord_x_train_dataset)
-        cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=32)
+        cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=batch_size)
 
     losses_list = []
 
