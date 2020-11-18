@@ -165,7 +165,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                 epochs: int = 3,
                 max_len: int = 512,
                 batch_size: int = 32,
-                lr_decay: bool = False):
+                lr_decay: bool = False,
+                class_weight = True):
     """
     Train the Transformer model.
 
@@ -204,6 +205,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param max_len: length of encoded inputs
     :param batch_size: batch size
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
+    :param class_weight: if True, use class weights when fine tuning
     :return: fine-tuned Transformer model
     """
     if model_name != 'deepset/covid_bert_base':
@@ -319,22 +321,36 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # Fine tune on ManConCorpus
     if use_man_con:
+        weight_for_0 = (1 / len(man_con_train_y==0))*(len(man_con_train_y))/3.0 
+        weight_for_1 = (1 / len(man_con_train_y==1))*(len(man_con_train_y))/3.0
+        weight_for_2 = (1 / len(man_con_train_y==2))*(len(man_con_train_y))/3.0
+
+        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
+        
         train_history = model.fit(man_con_train_x,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=class_weight)
         train_hist_list.append(train_history)
 
     # Fine tune on CORD-19
     if use_cord:
+        weight_for_0 = (1 / len(cord_train_y==0))*(len(cord_train_y))/3.0 
+        weight_for_1 = (1 / len(cord_train_y==1))*(len(cord_train_y))/3.0
+        weight_for_2 = (1 / len(cord_train_y==2))*(len(cord_train_y))/3.0
+
+        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
+        
         train_history = model.fit(cord_train_x,
                                   cord_train_y,
                                   batch_size=batch_size,
                                   validation_data=(cord_test_x, cord_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=class_weight)
         train_hist_list.append(train_history)
 
     return model, train_hist_list

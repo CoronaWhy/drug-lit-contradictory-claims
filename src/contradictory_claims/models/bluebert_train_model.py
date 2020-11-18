@@ -269,26 +269,26 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
 
     # Package data into a DataLoader
     if use_multi_nli:
-        multinli_x_train_dataset = ContraDataset(multi_nli_train_x.to_list(), multi_nli_train_y, tokenizer, max_len=512,
+        multinli_x_train_dataset = ContraDataset(list(multi_nli_train_x), multi_nli_train_y, tokenizer, max_len=512,
                                                  multi_class=multi_class)
         multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
         multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
                                                  sampler=multinli_x_train_sampler, batch_size=32)
 
     if use_med_nli:
-        mednli_x_train_dataset = ContraDataset(med_nli_train_x.to_list(), med_nli_train_y, tokenizer, max_len=512,
+        mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
         mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
         mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler, batch_size=32)
 
     if use_man_con:
-        mancon_x_train_dataset = ContraDataset(man_con_train_x.to_list(), man_con_train_y, tokenizer, max_len=512,
+        mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
         mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
         mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=32)
 
     if use_cord:
-        cord_x_train_dataset = ContraDataset(cord_train_x.to_list(), cord_train_y, tokenizer, max_len=512,
+        cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
         cord_x_train_sampler = RandomSampler(cord_x_train_dataset)
         cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=32)
