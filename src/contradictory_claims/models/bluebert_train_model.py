@@ -71,13 +71,13 @@ class TorchContraNet(nn.Module):
         y = self.out(unnormalized_labels)
         return y
 
-    def train(self):
+    def my_train(self):
         """Prepare transformer for training."""
         self.transformer.train()
 
-    # def eval(self):
-        # """Freeze transformer weights."""
-        # self.transformer.eval()
+    def eval(self):
+        """Freeze transformer weights."""
+        self.transformer.eval()
 
 
 def format_time(elapsed):
@@ -125,7 +125,7 @@ def bluebert_create_model(bluebert_pretrained_path: str, multi_class: bool = Tru
 
     # Create model
     model = TorchContraNet(transformer, multi_class=multi_class)
-    model.train()
+    model.my_train()
     model.to(device)
 
     return model, tokenizer, device
@@ -236,7 +236,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
                                 use_cord: bool = True,
-								batch_size: int = 32):
+                                batch_size: int = 32):
     """
     Create and train the Bluebert Transformer model.
 
@@ -263,7 +263,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :param use_cord: if True, use CORD-19 in fine-tuning
-	:param batch_size: batch size for fine-tuning
+    :param batch_size: batch size for fine-tuning
     :return: fine-tuned Bluebert Transformer model
     """
     # Create model
@@ -339,6 +339,8 @@ def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: 
 
     if not os.path.exists(bluebert_save_path):
         os.makedirs(bluebert_save_path)
+    
+    bluebert_save_path = os.path.join(bluebert_save_path,"bluebert_model.pt")
 
     torch.save(model, bluebert_save_path)
     return
@@ -360,7 +362,7 @@ def bluebert_load_model(bluebert_model_path: str):
         print('No GPU available, using the CPU instead.')  # noqa: T001
         device = torch.device("cpu")
 
-    model = torch.load(bluebert_model_path)
+    model = torch.load(bluebert_model_path, map_location=device)
     model.to(device)
 
     return model, device

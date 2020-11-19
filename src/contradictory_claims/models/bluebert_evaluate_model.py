@@ -18,7 +18,7 @@ def bluebert_make_predictions(df: pd.DataFrame,
                               device,
                               model_name: str,
                               max_len: int = 512,
-                              method: str = "multiclass"):
+                              multi_class: bool = True):
     """
     Make predictions using trained model and data to predict on.
 
@@ -28,18 +28,34 @@ def bluebert_make_predictions(df: pd.DataFrame,
     :param device: CPU vs GPU definition for torch
     :param model_name: name of model to be loaded by Transformer to get proper tokenizer
     :param max_len: max length of string to be encoded
-    :param method: "multiclass" or "binary"--describes setting for prediction outputs
+    :param multi_class: "multiclass" or "binary"--describes setting for prediction outputs
     :return: Pandas DataFrame augmented with predictions made using trained model
     """
     # First insert the CLS and SEP tokens
     inputs = []
-    for i in range(len(df)):
-        # NOTE: this expects columns named "text1" and "text2" for the two claims
-        inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']))
+    if multi_class:
+        for i in range(len(df)):
+            # NOTE: this expects columns named "text1" and "text2" for the two claims
+            inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']))
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        for i in range(len(df)):
+            inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']
+                              + '[SEP]' + 'CON'))  # noqa: 
+        for i in range(len(df)):
+            inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']
+                              + '[SEP]' + 'ENT'))  # noqa: W503
+        for i in range(len(df)):
+            inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']
+                              + '[SEP]' + 'NEU'))  # noqa: W503
+    
+    # Map labels to numerical (categorical) values
+    df['annotation'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                        label in df.annotation]
 
     # Next prepare the dataloader
     tokenizer = BertTokenizer.from_pretrained(bluebert_pretrained_path)
-    labels = np_utils.to_categorical(df.label, dtype='int')
+    labels = np_utils.to_categorical(df.annotation, dtype='int')
     eval_dataset = ContraDataset(inputs, labels, tokenizer, max_len=512)
     eval_dataloader = DataLoader(eval_dataset, batch_size=1)
 
@@ -47,7 +63,7 @@ def bluebert_make_predictions(df: pd.DataFrame,
     model.eval()
 
     # Then make predictions
-    for batch in eval_dataloader:
+    for i,batch in enumerate(eval_dataloader):
         claim = batch[0].to(device)
         mask = batch[1].to(device)
 
@@ -56,14 +72,12 @@ def bluebert_make_predictions(df: pd.DataFrame,
 
         pred_labels = pred_labels.detach().cpu().numpy()
 
-        if method == "multiclass":
+        if multi_class:
             # Get index of largest softmax prediction
             pred_flat = np.argmax(pred_labels, axis=1).flatten()
-            df['predicted_class'] = pred_flat
-        elif method == "binary":
+            df.loc[i,'predicted_class'] = pred_flat
+        else:
             # TODO: Add binary class model architecture code
             pass
-        else:
-            raise ValueError(f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
 
     return df
