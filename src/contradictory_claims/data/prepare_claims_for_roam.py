@@ -22,6 +22,7 @@ INPUT_CLAIMS_FILE = "/Users/dnsosa/Downloads/processed_claims_150820.csv"
 NON_CLAIMS_FILE = "/Users/dnsosa/Downloads/RoamPairs/non_claims_file.txt"
 OUTPUT_CLAIMS_FILE = "/Users/dnsosa/Downloads/RoamPairs/pairs_by_topic_09_18_20_abs_conc_no_nonclaims.xlsx"
 
+
 def polarity_tb_score(text: str) -> float:
     """
     Calculate polarity of a sentence using TextBlob.
