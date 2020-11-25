@@ -4,6 +4,7 @@
 
 import json
 
+import numpy as np
 import pandas as pd
 from contradictory_claims.models.evaluate_model import read_data_from_excel
 from keras.utils import np_utils

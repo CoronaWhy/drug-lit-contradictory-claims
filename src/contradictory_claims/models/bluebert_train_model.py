@@ -57,7 +57,7 @@ class TorchContraNet(nn.Module):
         self.transformer = transformer
         if multi_class:
             self.linear = nn.Linear(768, 3)
-            self.out = nn.Softmax(dim=0)
+            self.out = nn.Softmax(dim=1)
         else:
             self.linear = nn.Linear(768, 1)
             self.out = nn.Sigmoid()
@@ -75,7 +75,8 @@ class TorchContraNet(nn.Module):
         """Prepare transformer for training."""
         self.transformer.train()
 
-    def eval(self):
+    def eval(self):  # noqa: A003
+        # Note: This runs fine, not sure if the A003 warning should be looked into
         """Freeze transformer weights."""
         self.transformer.eval()
 
@@ -152,7 +153,9 @@ def bluebert_train_model(model,
     """
     # Set training loss criterion and optimizer
     if criterion is None:
-        criterion = torch.nn.MSELoss(reduction='sum')
+        torch_criterion = torch.nn.MSELoss(reduction='sum')
+    elif criterion == 'crossentropy':
+        torch_criterion = torch.nn.CrossEntropyLoss()
     if optimizer is None:
         optimizer = AdamW(model.parameters(), lr=2e-5, eps=1e-8)
 
@@ -190,12 +193,16 @@ def bluebert_train_model(model,
 
             claim = batch[0].to(device)
             mask = batch[1].to(device)
-            label = batch[2].to(device).float()
+            if criterion == 'crossentropy':
+                label = batch[2].to(device=device, dtype=torch.int64)
+                label = torch.max(label, 1)[1]
+            else:
+                label = batch[2].to(device).float()
 
             model.zero_grad()
 
             y = model(claim, mask)
-            loss = criterion(y, label)
+            loss = torch_criterion(y, label)
             total_loss += loss.item()
             loss.backward()
 
@@ -236,7 +243,9 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
                                 use_cord: bool = True,
-                                batch_size: int = 32):
+                                epochs: int = 3,
+                                batch_size: int = 32,
+                                criterion: str = None):
     """
     Create and train the Bluebert Transformer model.
 
@@ -263,8 +272,11 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :param use_cord: if True, use CORD-19 in fine-tuning
+    :param epochs: number of epochs for training
     :param batch_size: batch size for fine-tuning
+    :param criterion: training loss criterion
     :return: fine-tuned Bluebert Transformer model
+    :return device: CPU vs GPU definition for torch
     """
     # Create model
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
@@ -288,7 +300,8 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
         mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
         mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
-        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler, batch_size=batch_size)
+        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler,
+                                               batch_size=batch_size)
 
     if use_cord:
         cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
@@ -300,29 +313,33 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
 
     # Fine tune model on MultiNLI
     if use_multi_nli:
-        model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device)
-        losses_list.append(losses_list)
+        model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device, epochs=epochs,
+                                             criterion=criterion)
+        losses_list.append(losses)
         print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
-        model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device)
-        losses_list.append(losses_list)
+        model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device, epochs=epochs,
+                                             criterion=criterion)
+        losses_list.append(losses)
         print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
-        model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device)
-        losses_list.append(losses_list)
+        model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device, epochs=epochs,
+                                             criterion=criterion)
+        losses_list.append(losses)
         print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
     # Fine tune model on CORD
     if use_cord:
-        model, losses = bluebert_train_model(model, cord_x_train_dataloader, device)
-        losses_list.append(losses_list)
+        model, losses = bluebert_train_model(model, cord_x_train_dataloader, device, epochs=epochs,
+                                             criterion=criterion)
+        losses_list.append(losses)
         print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 
-    return model, losses
+    return model, losses, device
 
 
 def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: str = 'output/bluebert_transformer'):
@@ -339,8 +356,8 @@ def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: 
 
     if not os.path.exists(bluebert_save_path):
         os.makedirs(bluebert_save_path)
-    
-    bluebert_save_path = os.path.join(bluebert_save_path,"bluebert_model.pt")
+
+    bluebert_save_path = os.path.join(bluebert_save_path, "bluebert_model.pt")
 
     torch.save(model, bluebert_save_path)
     return

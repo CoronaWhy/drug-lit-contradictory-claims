@@ -321,12 +321,12 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # Fine tune on ManConCorpus
     if use_man_con:
-        weight_for_0 = (1 / len(man_con_train_y==0))*(len(man_con_train_y))/3.0 
-        weight_for_1 = (1 / len(man_con_train_y==1))*(len(man_con_train_y))/3.0
-        weight_for_2 = (1 / len(man_con_train_y==2))*(len(man_con_train_y))/3.0
+        weight_for_0 = (1 / len(man_con_train_y == 0)) * (len(man_con_train_y)) / 3.0
+        weight_for_1 = (1 / len(man_con_train_y == 1)) * (len(man_con_train_y)) / 3.0
+        weight_for_2 = (1 / len(man_con_train_y == 2)) * (len(man_con_train_y)) / 3.0
 
         class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-        
+
         train_history = model.fit(man_con_train_x,
                                   man_con_train_y,
                                   batch_size=batch_size,
@@ -338,12 +338,12 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # Fine tune on CORD-19
     if use_cord:
-        weight_for_0 = (1 / len(cord_train_y==0))*(len(cord_train_y))/3.0 
-        weight_for_1 = (1 / len(cord_train_y==1))*(len(cord_train_y))/3.0
-        weight_for_2 = (1 / len(cord_train_y==2))*(len(cord_train_y))/3.0
+        weight_for_0 = (1 / len(cord_train_y == 0)) * (len(cord_train_y)) / 3.0
+        weight_for_1 = (1 / len(cord_train_y == 1)) * (len(cord_train_y)) / 3.0
+        weight_for_2 = (1 / len(cord_train_y == 2)) * (len(cord_train_y)) / 3.0
 
         class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-        
+
         train_history = model.fit(cord_train_x,
                                   cord_train_y,
                                   batch_size=batch_size,

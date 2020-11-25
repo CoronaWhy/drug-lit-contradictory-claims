@@ -48,14 +48,14 @@ def bluebert_make_predictions(df: pd.DataFrame,
         for i in range(len(df)):
             inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']
                               + '[SEP]' + 'NEU'))  # noqa: W503
-    
+
     # Map labels to numerical (categorical) values
-    df['annotation'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
-                        label in df.annotation]
+    labels = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+              label in df.annotation]
 
     # Next prepare the dataloader
     tokenizer = BertTokenizer.from_pretrained(bluebert_pretrained_path)
-    labels = np_utils.to_categorical(df.annotation, dtype='int')
+    labels = np_utils.to_categorical(labels, dtype='int')
     eval_dataset = ContraDataset(inputs, labels, tokenizer, max_len=512)
     eval_dataloader = DataLoader(eval_dataset, batch_size=1)
 
@@ -63,7 +63,7 @@ def bluebert_make_predictions(df: pd.DataFrame,
     model.eval()
 
     # Then make predictions
-    for i,batch in enumerate(eval_dataloader):
+    for i, batch in enumerate(eval_dataloader):
         claim = batch[0].to(device)
         mask = batch[1].to(device)
 
@@ -73,11 +73,19 @@ def bluebert_make_predictions(df: pd.DataFrame,
         pred_labels = pred_labels.detach().cpu().numpy()
 
         if multi_class:
+            df.loc[i, 'predicted_con'] = pred_labels[0][2]
+            df.loc[i, 'predicted_ent'] = pred_labels[0][1]
+            df.loc[i, 'predicted_neu'] = pred_labels[0][0]
             # Get index of largest softmax prediction
             pred_flat = np.argmax(pred_labels, axis=1).flatten()
-            df.loc[i,'predicted_class'] = pred_flat
+            df.loc[i, 'predicted_class'] = int(pred_flat)
         else:
             # TODO: Add binary class model architecture code
             pass
+
+    # Map labels back to class names
+    df.predicted_class.replace(to_replace={2: 'contradiction',
+                               1: 'entailment',
+                               0: 'neutral'}, inplace=True)
 
     return df

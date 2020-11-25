@@ -193,17 +193,17 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         # Train model
-        bluebert_trained_model,\
-            bluebert_train_hist = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
-                                                              multi_nli_test_x, multi_nli_test_y,
-                                                              med_nli_train_x, med_nli_train_y,
-                                                              med_nli_test_x, med_nli_test_y,
-                                                              man_con_train_x, man_con_train_y,
-                                                              man_con_test_x, man_con_test_y,
-                                                              cord_train_x, cord_train_y,
-                                                              cord_test_x, cord_test_y,
-                                                              bluebert_model_path,
-                                                              multi_class=multi_class)
+        bluebert_trained_model, bluebert_train_hist,\
+            device = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
+                                                 multi_nli_test_x, multi_nli_test_y,
+                                                 med_nli_train_x, med_nli_train_y,
+                                                 med_nli_test_x, med_nli_test_y,
+                                                 man_con_train_x, man_con_train_y,
+                                                 man_con_test_x, man_con_test_y,
+                                                 cord_train_x, cord_train_y,
+                                                 cord_test_x, cord_test_y,
+                                                 bluebert_model_path,
+                                                 multi_class=multi_class)
         # Save model
         bluebert_save_model(bluebert_trained_model)
 
@@ -211,7 +211,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
         with open(out_train_hist_dir, 'w') as f:
             for item in bluebert_train_hist:
-                f.write(str(item.history) + "\n")
+                f.write(str(item) + "\n")
 
     else:
         bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
