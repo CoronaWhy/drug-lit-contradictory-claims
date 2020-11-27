@@ -320,7 +320,7 @@ def train_sbert_model(sbert_model,
             df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mednli_train,
-                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, , learning_rate=learning_rate)
+                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -329,7 +329,7 @@ def train_sbert_model(sbert_model,
             df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
-                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, , learning_rate=learning_rate)
+                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
 
     # return sbert_model
 
