@@ -277,6 +277,7 @@ def train_sbert_model(sbert_model,
                       man_con_test_y: np.ndarray = None,
                       batch_size: int = 2,
                       num_epochs: int = 1,
+                      learning_rate: float = 1e-7
                       ):
     """Train SBERT on any NLI dataset.
 
@@ -300,6 +301,8 @@ def train_sbert_model(sbert_model,
     :type batch_size: int, optional
     :param num_epochs: [description], defaults to 1
     :type num_epochs: int, optional
+    :param learning_rate: defaults to 1e-7
+    :type learning_rate: float
     """
     if multi_nli:
         if multi_nli_train_x is not None:
@@ -308,7 +311,7 @@ def train_sbert_model(sbert_model,
             df_multi_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
-                    df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size)
+                    df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -317,7 +320,7 @@ def train_sbert_model(sbert_model,
             df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mednli_train,
-                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size)
+                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, , learning_rate=learning_rate)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -326,7 +329,7 @@ def train_sbert_model(sbert_model,
             df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
-                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size)
+                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, , learning_rate=learning_rate)
 
     # return sbert_model
 
