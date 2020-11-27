@@ -56,7 +56,7 @@ class ClassifierDataset(Dataset):
         count_dict = Counter(target_list)
         class_count = [count_dict[i] for i in range(3)]
         class_weights = len(target_list) / torch.tensor(class_count, dtype=torch.float)
-        class_weights = class_weights / class_weights.sum()
+        class_weights = class_weights / len(class_weights)
         # print(class_weights)  # noqa: T001
         return class_weights
 
