@@ -124,7 +124,7 @@ def trainer(model: SBERTPredictor,
     train_data = SentencesDataset(nli_reader.get_examples(), model=model.embedding_model)
     train_data.label_type = torch.long
     # some bug in sentence_transformer library causes it to be identified as float by default
-    train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
+    train_dataloader_embed = DataLoader(train_data, shuffle=True, batch_size=batch_size)
     train_loss = losses.SoftmaxLoss(
         model=model.embedding_model,
         sentence_embedding_dimension=model.embedding_model.get_sentence_embedding_dimension(),
@@ -137,16 +137,7 @@ def trainer(model: SBERTPredictor,
                                              sentences2=df_val["sentence2"].values,
                                              scores=df_val["label"].values / 2.,
                                              batch_size=batch_size)
-    warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
-    ## train embedding layer
-    unfreeze_layer(model.embedding_model)
-    model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
-                              evaluator=evaluator,
-                              epochs=embedding_epochs,
-                              evaluation_steps=1000,
-                              warmup_steps=warmup_steps,
-                              )  # train the Transformer layer
-    freeze_layer(model.embedding_model)
+    warmup_steps = math.ceil(len(train_dataloader_embed) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
 
     # now to train the final layer
     train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
@@ -175,6 +166,15 @@ def trainer(model: SBERTPredictor,
     print("------TRAINING STARTS----------")  # noqa: T001
 
     for e in range(epochs):
+        ## train embedding layer
+        unfreeze_layer(model.embedding_model)
+        model.embedding_model.fit(train_objectives=[(train_dataloader_embed, train_loss)],
+                                  evaluator=evaluator,
+                                  epochs=1,
+                                  evaluation_steps=1000,
+                                  warmup_steps=warmup_steps,
+                                  )  # train the Transformer layer
+        freeze_layer(model.embedding_model)
 
         train_epoch_loss = 0
         train_epoch_acc = 0
