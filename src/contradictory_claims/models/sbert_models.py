@@ -136,15 +136,6 @@ def trainer(model: SBERTPredictor,
                                              batch_size=batch_size)
     warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
 
-    unfreeze_layer(model.embedding_model)
-    model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
-                              evaluator=evaluator,
-                              epochs=epochs,
-                              evaluation_steps=1000,
-                              warmup_steps=warmup_steps,
-                              )  # train the Transformer layer
-    freeze_layer(model.embedding_model)
-
     # now to train the final layer
     train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
     val_dataset = ClassifierDataset(df_val, tokenizer=tokenizer)
@@ -172,6 +163,16 @@ def trainer(model: SBERTPredictor,
     print("------TRAINING STARTS----------")  # noqa: T001
 
     for e in range(epochs):
+        ## train embedding layer
+        unfreeze_layer(model.embedding_model)
+        model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
+                                  evaluator=evaluator,
+                                  epochs=1,
+                                  evaluation_steps=1000,
+                                  warmup_steps=warmup_steps,
+                                  )  # train the Transformer layer
+        freeze_layer(model.embedding_model)
+
         train_epoch_loss = 0
         train_epoch_acc = 0
         model.train()
