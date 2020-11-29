@@ -98,6 +98,7 @@ def trainer(model: SBERTPredictor,
             epochs: int = 1,
             learning_rate: float = 1e-5,
             batch_size: int = 16,
+            embedding_epochs: int = None
             ):
     """Train the SBERT model using a training data loader and a validation dataloader.
 
@@ -115,6 +116,8 @@ def trainer(model: SBERTPredictor,
     :param batch_size: batch size to be used for training
     :type batch_size: int
     """
+    if embedding_epochs is None:
+        embedding_epochs=epochs
     nli_reader = NLIDataReader(df_train)
     train_num_labels = nli_reader.get_num_labels()
 
@@ -135,6 +138,15 @@ def trainer(model: SBERTPredictor,
                                              scores=df_val["label"].values / 2.,
                                              batch_size=batch_size)
     warmup_steps = math.ceil(len(train_dataloader) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
+    ## train embedding layer
+    unfreeze_layer(model.embedding_model)
+    model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
+                              evaluator=evaluator,
+                              epochs=embedding_epochs,
+                              evaluation_steps=1000,
+                              warmup_steps=warmup_steps,
+                              )  # train the Transformer layer
+    freeze_layer(model.embedding_model)
 
     # now to train the final layer
     train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
@@ -163,15 +175,6 @@ def trainer(model: SBERTPredictor,
     print("------TRAINING STARTS----------")  # noqa: T001
 
     for e in range(epochs):
-        ## train embedding layer
-        unfreeze_layer(model.embedding_model)
-        model.embedding_model.fit(train_objectives=[(train_dataloader, train_loss)],
-                                  evaluator=evaluator,
-                                  epochs=1,
-                                  evaluation_steps=1000,
-                                  warmup_steps=warmup_steps,
-                                  )  # train the Transformer layer
-        freeze_layer(model.embedding_model)
 
         train_epoch_loss = 0
         train_epoch_acc = 0
@@ -278,7 +281,8 @@ def train_sbert_model(sbert_model,
                       man_con_test_y: np.ndarray = None,
                       batch_size: int = 2,
                       num_epochs: int = 1,
-                      learning_rate: float = 1e-7
+                      learning_rate: float = 1e-7,
+                      embedding_epochs: int = None
                       ):
     """Train SBERT on any NLI dataset.
 
@@ -312,7 +316,8 @@ def train_sbert_model(sbert_model,
             df_multi_val = remove_tokens_get_sentence_sbert(multi_nli_test_x, multi_nli_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
-                    df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
+                    df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
+                    embedding_epochs=embedding_epochs)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -321,7 +326,8 @@ def train_sbert_model(sbert_model,
             df_mednli_val = remove_tokens_get_sentence_sbert(med_nli_test_x, med_nli_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mednli_train,
-                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
+                    df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
+                    embedding_epochs=embedding_epochs)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -330,7 +336,8 @@ def train_sbert_model(sbert_model,
             df_mancon_val = remove_tokens_get_sentence_sbert(man_con_test_x, man_con_test_y)
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
-                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate)
+                    df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
+                    embedding_epochs=embedding_epochs)
 
     # return sbert_model
 
