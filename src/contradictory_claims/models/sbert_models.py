@@ -98,7 +98,8 @@ def trainer(model: SBERTPredictor,
             epochs: int = 1,
             learning_rate: float = 1e-5,
             batch_size: int = 16,
-            embedding_epochs: int = None
+            embedding_epochs: int = None,
+            enable_class_weights: bool = True
             ):
     """Train the SBERT model using a training data loader and a validation dataloader.
 
@@ -142,8 +143,10 @@ def trainer(model: SBERTPredictor,
     # now to train the final layer
     train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
     val_dataset = ClassifierDataset(df_val, tokenizer=tokenizer)
-
-    class_weights = train_dataset.class_weights()
+    if enable_class_weights==False:
+        class_weights=None
+    else:
+        class_weights = train_dataset.class_weights()
 
     train_dataloader = DataLoader(dataset=train_dataset,
                                   batch_size=batch_size,
@@ -283,7 +286,8 @@ def train_sbert_model(sbert_model,
                       batch_size: int = 2,
                       num_epochs: int = 1,
                       learning_rate: float = 1e-7,
-                      embedding_epochs: int = None
+                      embedding_epochs: int = None,
+                      enable_class_weights: bool = True
                       ):
     """Train SBERT on any NLI dataset.
 
@@ -318,7 +322,7 @@ def train_sbert_model(sbert_model,
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_multi_train,
                     df_val=df_multi_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
-                    embedding_epochs=embedding_epochs)
+                    embedding_epochs=embedding_epochs, enable_class_weights=enable_class_weights)
 
     if med_nli:
         if med_nli_train_x is not None:
@@ -328,7 +332,7 @@ def train_sbert_model(sbert_model,
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mednli_train,
                     df_val=df_mednli_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
-                    embedding_epochs=embedding_epochs)
+                    embedding_epochs=embedding_epochs, enable_class_weights=enable_class_weights)
 
     if mancon_corpus:
         if man_con_train_x is not None:
@@ -338,7 +342,7 @@ def train_sbert_model(sbert_model,
 
             trainer(model=sbert_model, tokenizer=tokenizer, df_train=df_mancon_train,
                     df_val=df_mancon_val, epochs=num_epochs, batch_size=batch_size, learning_rate=learning_rate,
-                    embedding_epochs=embedding_epochs)
+                    embedding_epochs=embedding_epochs, enable_class_weights=enable_class_weights)
 
     # return sbert_model
 
