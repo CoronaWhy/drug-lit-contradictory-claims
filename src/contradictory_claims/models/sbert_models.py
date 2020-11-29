@@ -125,7 +125,7 @@ def trainer(model: SBERTPredictor,
     train_data.label_type = torch.long
     # some bug in sentence_transformer library causes it to be identified as float by default
     train_dataloader_embed = DataLoader(train_data, shuffle=True, batch_size=batch_size)
-    train_loss = losses.SoftmaxLoss(
+    train_loss_embed = losses.SoftmaxLoss(
         model=model.embedding_model,
         sentence_embedding_dimension=model.embedding_model.get_sentence_embedding_dimension(),
         num_labels=train_num_labels)
@@ -172,7 +172,7 @@ def trainer(model: SBERTPredictor,
 
         ## train embedding layer
         unfreeze_layer(model.embedding_model)
-        model.embedding_model.fit(train_objectives=[(train_dataloader_embed, train_loss)],
+        model.embedding_model.fit(train_objectives=[(train_dataloader_embed, train_loss_embed)],
                                   evaluator=evaluator,
                                   epochs=1,
                                   evaluation_steps=1000,
