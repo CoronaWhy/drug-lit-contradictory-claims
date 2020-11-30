@@ -258,6 +258,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                        restore_best_weights=True)
 
     strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    now = datetime.datetime.now()
     if continue_fine_tuning:
         with strategy.scope():
             model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
@@ -266,21 +267,27 @@ def train_model(multi_nli_train_x: np.ndarray,
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
             model.resize_token_embeddings(len(tokenizer))
-            os.makedirs("covid_bert_base")
-            model.save_pretrained("covid_bert_base")
+            tmp_dir = f"covid_bert_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}"
+            if os.path.exists(tmp_dir):
+                raise Exception("Directory conflict when saving model temporarily!")
+            os.makedirs(tmp_dir)
+            model.save_pretrained(tmp_dir)
             with strategy.scope():
-                model = TFAutoModel.from_pretrained("covid_bert_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
-            shutil.rmtree("covid_bert_base")
+                model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
+                model = build_model(model)
+            shutil.rmtree(tmp_dir)
         else:
             model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
             model.resize_token_embeddings(len(tokenizer))
-            os.makedirs("biomed_roberta_base")
-            model.save_pretrained("biomed_roberta_base")
+            tmp_dir = f"biomed_roberta_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}"
+            if os.path.exists(tmp_dir):
+                raise Exception("Directory conflict when saving model temporarily!")
+            os.makedirs(tmp_dir)
+            model.save_pretrained(tmp_dir)
             with strategy.scope():
-                model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
-            shutil.rmtree("biomed_roberta_base")
+                model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
+                model = build_model(model)
+            shutil.rmtree(tmp_dir)
         batch_size = 2 * strategy.num_replicas_in_sync
 
     print(model.summary())  # noqa: T001
