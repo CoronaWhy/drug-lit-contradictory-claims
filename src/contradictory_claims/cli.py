@@ -25,16 +25,25 @@ from .models.train_model import load_model, save_model, train_model
 
 
 @click.command()
-@click.option('--extract/--no-extract', 'extract', default=False)
 @click.option('--train/--no-train', 'train', default=False)
+@click.option('--roberta/--no-roberta', 'roberta', default=True)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
 @click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
+@click.option('--multinli/--no-multinli', 'use_multinli', default=True)
+@click.option('--mednli/--no-mednli', 'use_mednli', default=True)
+@click.option('--mancon/--no-mancon', 'use_mancon', default=True)
+@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=True)
+@click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
 @click.option('--report/--no-report', 'report', default=False)
 @click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
 @click.option('--multi_class/--binary_class', 'multi_class', default=True)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
-@click.option('--roberta/--no-roberta', 'roberta', default=True)
-def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, multi_class, cord_version):
+@click.option('--learning_rate', 'learning_rate', default=1e-6)
+@click.option('--batch_size', 'batch_size', default=2)
+@click.option('--epochs', 'epochs', default=3)
+@click.option('--class_weights', 'class_weights', default=False)
+@click.option('--aux_input', 'aux_input', default=False)
+def main(train, roberta, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -92,7 +101,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
     conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
 
-    if extract:
+    if extract_claims:
         # Load and preprocess CORD-19 data
         # Extract names of files containing convid-19 synonymns in abstract/title
         # and published after a suitable cut-off date
@@ -153,6 +162,9 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
             load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+
+        # ALLOW CUSTOM VERSIONS OF TRAINING!
+        # use_multinli, use_mednli, use_mancon, use_roamdev, learning_rate, batch_size, epochs, class_weights, aux_input)
 
         # Train model
         trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
