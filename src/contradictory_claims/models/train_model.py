@@ -6,6 +6,7 @@ import datetime
 import os
 import pickle
 import shutil
+from random import randrange
 
 import numpy as np
 import tensorflow as tf
@@ -267,7 +268,8 @@ def train_model(multi_nli_train_x: np.ndarray,
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
             model.resize_token_embeddings(len(tokenizer))
-            tmp_dir = f"covid_bert_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}"
+            ri = randrange(1000)
+            tmp_dir = f"covid_bert_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}_{ri}"
             if os.path.exists(tmp_dir):
                 raise Exception("Directory conflict when saving model temporarily!")
             os.makedirs(tmp_dir)
@@ -277,9 +279,11 @@ def train_model(multi_nli_train_x: np.ndarray,
                 model = build_model(model)
             shutil.rmtree(tmp_dir)
         else:
+            now = datetime.datetime.now()
             model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
             model.resize_token_embeddings(len(tokenizer))
-            tmp_dir = f"biomed_roberta_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}"
+            ri = randrange(1000)
+            tmp_dir = f"biomed_roberta_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}_{ri}"
             if os.path.exists(tmp_dir):
                 raise Exception("Directory conflict when saving model temporarily!")
             os.makedirs(tmp_dir)

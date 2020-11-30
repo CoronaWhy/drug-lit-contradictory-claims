@@ -2,8 +2,10 @@
 
 # -*- coding: utf-8 -*-
 
+import datetime
 import os
 import shutil
+from random import randrange
 
 import click
 import pandas as pd
@@ -31,6 +33,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
 @click.option('--multi_class/--binary_class', 'multi_class', default=True)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
+@click.option('--roberta/--no-roberta', 'roberta', default=True)
 def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, multi_class, cord_version):
     """Run main function."""
     # Model parameters
@@ -47,8 +50,11 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
-    trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
     bluebert_out_dir = 'output/transformer/bluebert'
+    now = datetime.datetime.now()
+    transformer_dir = os.path.join('output/transformer', model_id)
+    ri = randrange(1000)
+    trained_model_out_dir = os.path.join(transformer_dir, f"{now.day}-{now.month}-{now.year}_{now.hour}_{now.minute}_RI{ri}")
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
@@ -163,7 +169,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
         # Save model
         out_dir = 'output/working/biomed_roberta_base/'
-        save_model(trained_model)
+        save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
