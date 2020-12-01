@@ -92,11 +92,11 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
         model_name = "allenai/biomed_roberta_base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     with torch.no_grad():
-        predictions = model(tokenizer.batch_encode_plus(df['text1'],
+        predictions = model(tokenizer.batch_encode_plus(df['text1'].values.tolist(),
                                                         max_length=max_len,
                                                         pad_to_max_length=True,
                                                         truncation=True)["input_ids"],
-                            tokenizer.batch_encode_plus(df['text2'],
+                            tokenizer.batch_encode_plus(df['text2'].values.tolist(),
                                                         max_length=max_len,
                                                         pad_to_max_length=True,
                                                         truncation=True)["input_ids"])
