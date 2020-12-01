@@ -49,7 +49,7 @@ def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: i
     return np.array(enc_di['input_ids'])
 
 
-def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_decay: bool = False):  # noqa: D205
+def build_model(transformer, max_len: int = 512, multi_class: bool = True, init_learning_rate: float = 1e-6, lr_decay: bool = False):  # noqa: D205
     """
     Build an end-to-end Transformer model. Requires a transformer of type TFAutoBert.
     https://www.kaggle.com/xhlulu/jigsaw-tpu-distilbert-with-huggingface-and-keras
@@ -58,6 +58,7 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_de
     :param max_len: maximum length of encoded sequence
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
+    :param init_learning_rate: initial learning rate
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
     :return: Constructed Transformer model
     """
@@ -79,7 +80,7 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_de
                              end_learning_rate=1e-6,
                              power=1)
     else:
-        lr = 1e-6
+        lr = init_learning_rate
 
     if multi_class:
         model.compile(Adam(learning_rate=lr), loss='categorical_crossentropy',
@@ -152,8 +153,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                 cord_train_y: np.ndarray,
                 cord_test_x: np.ndarray,
                 cord_test_y: np.ndarray,
-                drug_names: list,
-                virus_names: list,
+                drug_names: list,  # not using currently...
+                virus_names: list,  # not using currently...
                 model_name: str,
                 multi_class: bool = True,
                 continue_fine_tuning: bool = False,
@@ -166,8 +167,9 @@ def train_model(multi_nli_train_x: np.ndarray,
                 epochs: int = 3,
                 max_len: int = 512,
                 batch_size: int = 32,
+                learning_rate: float = 1e-6,
                 lr_decay: bool = False,
-                class_weight: bool = True):
+                class_weight: bool = True):  # currently just always using this...
     """
     Train the Transformer model.
 
@@ -205,6 +207,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
+    :param learning_rate: learning rate
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
     :param class_weight: if True, use class weights when fine tuning
     :return: fine-tuned Transformer model
@@ -263,7 +266,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     if continue_fine_tuning:
         with strategy.scope():
             model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
-        batch_size = 2 * strategy.num_replicas_in_sync
+        #batch_size = 2 * strategy.num_replicas_in_sync
     else:
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
@@ -276,7 +279,7 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained(tmp_dir)
             with strategy.scope():
                 model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
-                model = build_model(model)
+                model = build_model(model, init_learning_rate=learning_rate)
             shutil.rmtree(tmp_dir)
         else:
             now = datetime.datetime.now()
@@ -290,9 +293,9 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained(tmp_dir)
             with strategy.scope():
                 model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
-                model = build_model(model)
+                model = build_model(model, init_learning_rate=learning_rate)
             shutil.rmtree(tmp_dir)
-        batch_size = 2 * strategy.num_replicas_in_sync
+        #batch_size = 2 * strategy.num_replicas_in_sync
 
     print(model.summary())  # noqa: T001
 

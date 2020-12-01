@@ -27,7 +27,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.command()
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--output_folder', 'output_dir')
-@click.option('--roberta/--no-roberta', 'roberta', default=True)
+#@click.option('--roberta/--no-roberta', 'roberta', default=True)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
 @click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
@@ -44,7 +44,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(train, output_dir, roberta, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
+def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -178,6 +178,13 @@ def main(train, output_dir, roberta, bluebert_train, bluebert_model_path, use_mu
                                                    cord_test_x, cord_test_y,
                                                    drug_names, virus_names,
                                                    model_name=model_name,
+                                                   use_multinli=use_multinli,
+                                                   use_mednli=use_mednli,
+                                                   use_mancon=use_mancon,
+                                                   use_cord=use_roamdev,
+                                                   epochs=epochs,
+                                                   batch_size=batch_size,  # class_weights, aux_input,
+                                                   learning_rate=learning_rate,
                                                    multi_class=multi_class)
 
         # Save model
@@ -222,6 +229,10 @@ def main(train, output_dir, roberta, bluebert_train, bluebert_model_path, use_mu
                                                  cord_train_x, cord_train_y,
                                                  cord_test_x, cord_test_y,
                                                  bluebert_model_path,
+                                                 use_multinli, use_mednli,
+                                                 use_mancon, use_roamdev,
+                                                 learning_rate, batch_size,
+                                                 epochs,  # class_weights, aux_input,
                                                  multi_class=multi_class)
         # Save model
         bluebert_save_model(bluebert_trained_model)
