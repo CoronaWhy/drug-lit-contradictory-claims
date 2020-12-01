@@ -26,13 +26,14 @@ from .models.train_model import load_model, save_model, train_model
 
 @click.command()
 @click.option('--train/--no-train', 'train', default=False)
+@click.option('--output_folder', 'output_dir')
 @click.option('--roberta/--no-roberta', 'roberta', default=True)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
 @click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
-@click.option('--mednli/--no-mednli', 'use_mednli', default=True)
-@click.option('--mancon/--no-mancon', 'use_mancon', default=True)
-@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=True)
+@click.option('--mednli/--no-mednli', 'use_mednli', default=False)
+@click.option('--mancon/--no-mancon', 'use_mancon', default=False)
+@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
 @click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
 @click.option('--report/--no-report', 'report', default=False)
 @click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
@@ -43,7 +44,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(train, roberta, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
+def main(train, output_dir, roberta, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -180,7 +181,8 @@ def main(train, roberta, bluebert_train, bluebert_model_path, use_multinli, use_
                                                    multi_class=multi_class)
 
         # Save model
-        out_dir = 'output/working/biomed_roberta_base/'
+        #out_dir = 'output/working/biomed_roberta_base/'
+        out_dir = output_dir
         save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
