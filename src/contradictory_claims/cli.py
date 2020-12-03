@@ -10,7 +10,7 @@ from random import randrange
 import click
 import pandas as pd
 
-from .bluebert_evaluate_model import bluebert_make_predictions
+from .models.bluebert_evaluate_model import bluebert_make_predictions
 from .data.make_dataset import \
     load_cord_pairs, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
@@ -44,7 +44,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, biobert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
+def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, bluebert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
