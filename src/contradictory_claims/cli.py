@@ -52,7 +52,6 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
-
     json_text_file_dir = os.path.join(root_dir, 'input', cord_version, 'document_parses.tar.gz')
 
     # Path for temporary file storage during CORD-19 processing
