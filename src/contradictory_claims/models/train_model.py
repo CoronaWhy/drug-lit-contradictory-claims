@@ -267,6 +267,7 @@ def train_model(multi_nli_train_x: np.ndarray,
         with strategy.scope():
             model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
         #batch_size = 2 * strategy.num_replicas_in_sync
+
     else:
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
@@ -293,7 +294,7 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained(tmp_dir)
             with strategy.scope():
                 model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
-                model = build_model(model, init_learning_rate=learning_rate)
+                model = build_model(model, multi_class=multi_class, init_learning_rate=learning_rate, lr_decay=lr_decay)
             shutil.rmtree(tmp_dir)
         #batch_size = 2 * strategy.num_replicas_in_sync
 
