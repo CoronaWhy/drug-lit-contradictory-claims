@@ -77,7 +77,8 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
     pub_date_cutoff = '2019-10-01'
 
     # Claims data path
-    claims_data_path = os.path.join(root_dir, 'input/cord19/claims/claims_data.csv')
+    # claims_data_path = os.path.join(root_dir, 'input/cord19/claims/claims_data.csv')
+    claims_data_path = os.path.join(root_dir, "input/cord19/claims/drug_individual_claims_filtered_200620.csv")
 
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
     # directory structure and file names as follows.
@@ -143,14 +144,15 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
     else:
         claims_data = pd.read_csv(claims_data_path)
 
+    ## NOTE: Commenting out 12/3/20 because don't need for training
     # Initialize scispacy nlp object and add virus terms to the vocabulary
-    nlp = initialize_nlp(virus_lex_path)
+    ## nlp = initialize_nlp(virus_lex_path)
 
     # Pair similar claims
-    claims_paired_df = pair_similar_claims(claims_data, nlp)
+    ## claims_paired_df = pair_similar_claims(claims_data, nlp)
 
     # Add paper publish time and title info
-    claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
+    ## claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
     if train:
         # Load BERT train and test data
