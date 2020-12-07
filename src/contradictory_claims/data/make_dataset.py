@@ -269,7 +269,7 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
-        stratify = cord_data['label'])
+        stratify=cord_data['label'])
     if multi_class:
         x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
         x_test = x_test.to_numpy()
