@@ -166,21 +166,21 @@ def trainer(model: SBERTPredictor,
                   }
 
     print("------TRAINING STARTS----------")  # noqa: T001
+    ## train embedding layer
+    unfreeze_layer(model.embedding_model)
+    model.embedding_model.fit(train_objectives=[(train_dataloader_embed, train_loss_embed)],
+                              evaluator=evaluator,
+                              epochs=1,
+                              evaluation_steps=1000,
+                              warmup_steps=warmup_steps,
+                              )  # train the Transformer layer
+    freeze_layer(model.embedding_model)
+
 
     for e in range(epochs):
         train_epoch_loss = 0
         train_epoch_acc = 0
         model.train()
-
-        ## train embedding layer
-        unfreeze_layer(model.embedding_model)
-        model.embedding_model.fit(train_objectives=[(train_dataloader_embed, train_loss_embed)],
-                                  evaluator=evaluator,
-                                  epochs=1,
-                                  evaluation_steps=1000,
-                                  warmup_steps=warmup_steps,
-                                  )  # train the Transformer layer
-        freeze_layer(model.embedding_model)
 
         for sentence1, sentence2, label in tqdm(train_dataloader):
             label = label.to(device)
