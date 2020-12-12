@@ -12,7 +12,8 @@ import pandas as pd
 
 from .models.bluebert_evaluate_model import bluebert_make_predictions
 from .data.make_dataset import \
-    load_cord_pairs, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
+    load_cord_pairs, load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
+    load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     extract_section_from_text, filter_metadata_for_covid19,\
     filter_section_with_drugs, merge_section_text
@@ -95,8 +96,10 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
     mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
 
     # CORD-19 annotated training data path
+    ## cord19_training_data_path = \
+    ##    os.path.join(root_dir, 'input/cord-training/Coronawhy-Contra-Claims-Scaling-v2-annotated-2020-10-21.xlsx')
     cord19_training_data_path = \
-        os.path.join(root_dir, 'input/cord-training/Coronawhy-Contra-Claims-Scaling-v2-annotated-2020-10-21.xlsx')
+        os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
 
     # Other input paths
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
@@ -162,8 +165,10 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
             load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
+        ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+        ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
+            load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         # ALLOW CUSTOM VERSIONS OF TRAINING!
@@ -180,9 +185,9 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
                                                    cord_test_x, cord_test_y,
                                                    drug_names, virus_names,
                                                    model_name=model_name,
-                                                   use_multinli=use_multinli,
-                                                   use_mednli=use_mednli,
-                                                   use_mancon=use_mancon,
+                                                   use_multi_nli=use_multinli,
+                                                   use_med_nli=use_mednli,
+                                                   use_man_con=use_mancon,
                                                    use_cord=use_roamdev,
                                                    epochs=epochs,
                                                    batch_size=batch_size,  # class_weights, aux_input,
@@ -194,7 +199,7 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
         out_dir = output_dir
         save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
         if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+            os.makedirs(out_dir)
         shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
 
         # Save model train history
@@ -216,8 +221,10 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
             load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
+        ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+        ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
+            load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         # Train model
@@ -246,15 +253,18 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
                 f.write(str(item) + "\n")
 
     else:
-        bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
+        pass
+        ## bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
         # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
         # active_sheet = "drug_individual_claims_similari"
-        eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
-        active_sheet = "All_phase2"
-        eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
+        ## eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
+        ## active_sheet = "All_phase2"
+        eval_data_path = \
+            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
+        eval_data = read_data_from_excel(eval_data_path, active_sheet="Eval")
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)
@@ -267,9 +277,11 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
         eval_data_dir = os.path.join(root_dir, "input")
         # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
         # active_sheet = "drug_individual_claims_similari"
-        eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
-        active_sheet = "All_phase2"
-        eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
+        ## eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
+        ## active_sheet = "All_phase2"
+        eval_data_path = \
+            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
+        eval_data = read_data_from_excel(eval_data_path, active_sheet="Eval")
 
         # Make predictions using trained model
         eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,

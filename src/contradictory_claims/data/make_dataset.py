@@ -305,3 +305,77 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
         y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
+
+
+def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True):
+    """
+    Load CORD-19 annotated claim pairs for training.
+
+    :param data_path: path to CORD training data
+    :param train_sheet: name of the Excel sheet containing the train set
+    :param dev_sheet: name of the Excel sheet containing the dev set
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
+    :return: CORD-19 sentence pairs and labels for training and test sets, respectively
+    """
+    cord_data_train = read_data_from_excel(data_path, train_sheet)
+    cord_data_dev = read_data_from_excel(data_path, dev_sheet)
+
+    cord_data_train['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                          label in cord_data_train.annotation]
+    print(f"Number of contradiction pairs: {len(cord_data_train[cord_data_train.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(cord_data_train[cord_data_train.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(cord_data_train[cord_data_train.label == 0])}")  # noqa: T001
+
+    cord_data_dev['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                                label in cord_data_dev.annotation]
+    print(f"Number of contradiction pairs: {len(cord_data_dev[cord_data_dev.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(cord_data_dev[cord_data_dev.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(cord_data_dev[cord_data_dev.label == 0])}")  # noqa: T001
+
+    # Insert the CLS and SEP tokens
+    #x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
+    #    '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
+    #    stratify=cord_data['label'])
+
+    x_train = '[CLS]' + cord_data_train.text1 + '[SEP]' + cord_data_train.text2
+    y_train_tmp = cord_data_train.label
+
+    x_test = '[CLS]' + cord_data_dev.text1 + '[SEP]' + cord_data_dev.text2
+    y_test_tmp = cord_data_dev.label
+
+    if multi_class:
+        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
+        x_test = x_test.to_numpy()
+
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(y_train_tmp)
+        y_test = np_utils.to_categorical(y_test_tmp)
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = x_train + '[SEP]' + 'CON'
+        x_train_2 = x_train + '[SEP]' + 'ENT'
+        x_train_3 = x_train + '[SEP]' + 'NEU'
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
+        x_train = x_train.to_numpy()
+        x_test_1 = x_test + '[SEP]' + 'CON'
+        x_test_2 = x_test + '[SEP]' + 'ENT'
+        x_test_3 = x_test + '[SEP]' + 'NEU'
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
+        y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
+        y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
+        y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
+        y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
+        y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
+        y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
+
+    return x_train, y_train, x_test, y_test
