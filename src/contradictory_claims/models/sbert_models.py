@@ -150,7 +150,8 @@ def trainer(model: SBERTPredictor,
 
     train_dataloader = DataLoader(dataset=train_dataset,
                                   batch_size=batch_size,
-                                  collate_fn=collate_fn)
+                                  collate_fn=collate_fn,
+                                  shuffle=True)
     val_dataloader = DataLoader(dataset=val_dataset,
                                 batch_size=1,
                                 collate_fn=collate_fn)
