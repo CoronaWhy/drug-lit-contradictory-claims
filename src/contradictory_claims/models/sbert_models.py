@@ -61,9 +61,9 @@ class SBERTPredictor(SentenceTransformer):
         :rtype: torch.Tensor
         """
         sentence1_embedding = torch.tensor(self.embedding_model.encode(sentence1, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 2304)
+                                           device=self._target_device).reshape(-1, 768)
         sentence2_embedding = torch.tensor(self.embedding_model.encode(sentence2, is_pretokenized=True),
-                                           device=self._target_device).reshape(-1, 2304)
+                                           device=self._target_device).reshape(-1, 768)
         net_vector = torch.cat((sentence1_embedding, sentence2_embedding, torch.abs(sentence1_embedding-sentence2_embedding)), 1)
         # net_vector = torch.cat((sentence1_embedding, sentence2_embedding), 1)
         linear = self.linear(net_vector)
