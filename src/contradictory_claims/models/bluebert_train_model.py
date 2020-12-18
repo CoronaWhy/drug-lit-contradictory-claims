@@ -10,8 +10,12 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, RandomSampler
-from transformers import AdamW, BertModel, BertTokenizer,\
+from transformers import (
+    AdamW,
+    BertModel,
+    BertTokenizer,
     get_linear_schedule_with_warmup
+)
 
 
 class ContraDataset(Dataset):
@@ -64,10 +68,10 @@ class TorchContraNet(nn.Module):
 
     def forward(self, claim, mask, label=None):
         """Run the model on inputs."""
-        hidden_states, enc_attn_mask = self.transformer(claim,
-                                                        token_type_ids=None,
-                                                        attention_mask=mask)
-        unnormalized_labels = self.linear(hidden_states[:, 0, :])
+        transformer_out = self.transformer(claim,
+                                           token_type_ids=None,
+                                           attention_mask=mask)
+        unnormalized_labels = self.linear(transformer_out.last_hidden_state[:, 0, :])
         y = self.out(unnormalized_labels)
         return y
 
