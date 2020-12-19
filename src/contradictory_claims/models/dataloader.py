@@ -4,6 +4,7 @@
 from collections import Counter
 
 import torch
+import numpy as np
 from sentence_transformers.readers import InputExample
 from torch.utils.data import Dataset
 
@@ -31,7 +32,10 @@ class ClassifierDataset(Dataset):
         :type index: int
         :return: sentence1,sentence2,label
         """
-        return (self.tokenized(self.sentence1[index])), (self.tokenized(self.sentence2[index])), self.label[index]
+        return (
+            self.tokenized(
+                self.sentence1[index])), (self.tokenized(
+                    self.sentence2[index])), self.label[index]
 
     def tokenized(self, text):
         """Return the tokens generated from processing the sentence.
@@ -55,7 +59,8 @@ class ClassifierDataset(Dataset):
         target_list = self.label
         count_dict = Counter(target_list)
         class_count = [count_dict[i] for i in range(3)]
-        class_weights = len(target_list) / torch.tensor(class_count, dtype=torch.float)
+        class_weights = len(target_list) / \
+            torch.tensor(class_count, dtype=torch.float)
         class_weights = class_weights / len(class_weights)
         # print(class_weights)  # noqa: T001
         return class_weights
@@ -108,6 +113,25 @@ def collate_fn(batch):
     return sentence1, sentence2, label
 
 
+def format_create(df, model):
+    """Return required format vector as input for logistic regression.
+    returns (u,v,|u-v|) vector
+
+    :param df: DataFrame containing "sentence1","sentence2","label" column names
+    :type df: pd.DataFrame
+    :param model: SBERT model
+    :type model: SBERTPredictor
+    :return: vector and label input for input to sklearn classification model
+    """
+    sentence1 = model.embedding_model.encode(df.sentence1.values, is_pretokenized=False)
+    sentence2 = model.embedding_model.encode(df.sentence2.values, is_pretokenized=False)
+    net_vector = np.concatenate(
+        (sentence1, sentence2, np.abs(
+            sentence1 - sentence2)), axis=1)
+    labels = df.label.values
+    return net_vector, labels
+
+
 class NLIDataReader(object):
     """NLI Dataset Reader."""
 
@@ -130,9 +154,15 @@ class NLIDataReader(object):
         s2 = self.df["sentence2"].iloc[:max_examples].values
         labels = self.df["label"].astype(int).iloc[:max_examples].values
         examples = []
-        for guid_id, (sentence_a, sentence_b, label) in enumerate(zip(s1, s2, labels)):
-            examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=label))
-            # examples.append(InputExample(guid=guid_id, texts=[sentence_a, sentence_b], label=self.mapping_sts(label)))
+        for guid_id, (sentence_a, sentence_b, label) in enumerate(
+                zip(s1, s2, labels)):
+            examples.append(
+                InputExample(
+                    guid=guid_id,
+                    texts=[
+                        sentence_a,
+                        sentence_b],
+                    label=label))
         return examples
 
     @staticmethod
