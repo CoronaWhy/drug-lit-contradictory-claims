@@ -4,6 +4,7 @@
 import datetime
 import math
 import os
+import pickle
 import shutil
 
 import numpy as np
@@ -54,7 +55,8 @@ class SBERTPredictor(SentenceTransformer):
         else:
             self._target_device = torch.device(device)
         self.to(self._target_device)
-        self.logisticregression = LogisticRegression(warm_start=False, max_iter=500)
+        self.logisticregression = LogisticRegression(warm_start=False, max_iter=500,
+                                                     class_weight="balanced")
 
     def forward(self, sentence1, sentence2):
         """Forward function.
@@ -386,7 +388,7 @@ def save_sbert_model(model: SBERTPredictor,
     if not os.path.exists(transformer_dir):
         os.makedirs(transformer_dir)
 
-    torch.save(model, os.path.join(transformer_dir, 'sigmoid.pickle'))
+    pickle.dump(model, os.path.join(transformer_dir, 'sigmoid.pickle'))
 
 
 def load_sbert_model(transformer_dir: str = 'output/sbert_model',
@@ -398,5 +400,5 @@ def load_sbert_model(transformer_dir: str = 'output/sbert_model',
     :return: SBERT model stored at given location
     :rtype: SBERTPredictor
     """
-    sbert_model = torch.load(os.path.join(transformer_dir, file_name))
+    sbert_model = pickle.load(os.path.join(transformer_dir, file_name))
     return sbert_model
