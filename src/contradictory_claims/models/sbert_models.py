@@ -54,7 +54,7 @@ class SBERTPredictor(SentenceTransformer):
         else:
             self._target_device = torch.device(device)
         self.to(self._target_device)
-        self.logisticregression = LogisticRegression(warm_start=True, max_iter=500)
+        self.logisticregression = LogisticRegression(warm_start=False, max_iter=500)
 
     def forward(self, sentence1, sentence2):
         """Forward function.
