@@ -17,7 +17,10 @@ from transformers import AutoTokenizer
 from .dataloader import format_create
 
 
-def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True):
+def read_data_from_excel(
+        data_path: str,
+        active_sheet: str,
+        drop_na: bool = True):
     """
     Read data from an Excel sheet.
 
@@ -27,7 +30,8 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     :return: Pandas DataFrame containing data
     """
     df = pd.read_excel(data_path, sheet_name=active_sheet)
-    # NOTE: first column contains junk, so dropping it. If we change data schema need to change this
+    # NOTE: first column contains junk, so dropping it. If we change data
+    # schema need to change this
     df = df.drop(df.columns[0], axis=1)
     print(f"Length of DF: {len(df)}")  # noqa: T001
     if drop_na:
@@ -37,7 +41,12 @@ def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True
     return df
 
 
-def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 512, method: str = "multiclass"):
+def make_predictions(
+        df: pd.DataFrame,
+        model,
+        model_name: str,
+        max_len: int = 512,
+        method: str = "multiclass"):
     """
     Make predictions using trained model and data to predict on.
 
@@ -51,8 +60,10 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
     # First insert the CLS and SEP tokens
     inputs = []
     for i in range(len(df)):
-        # NOTE: this expects columns named "text1" and "text2" for the two claims
-        inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']))
+        # NOTE: this expects columns named "text1" and "text2" for the two
+        # claims
+        inputs.append(str('[CLS]' + df.loc[i, 'text1'] +
+                          '[SEP]' + df.loc[i, 'text2']))
 
     # Then make predictions
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -65,19 +76,28 @@ def make_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 51
         df['predicted_ent'] = predictions[:, 1]
         df['predicted_neu'] = predictions[:, 0]
         # Calculate predicted class as the max predicted label
-        df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
-        df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
-                                               'predicted_ent': 'entailment',
-                                               'predicted_neu': 'neutral'}, inplace=True)
+        df['predicted_class'] = df[['predicted_con',
+                                    'predicted_ent', 'predicted_neu']].idxmax(axis=1)
+        df.predicted_class.replace(
+            to_replace={
+                'predicted_con': 'contradiction',
+                'predicted_ent': 'entailment',
+                'predicted_neu': 'neutral'},
+            inplace=True)
     elif method == "binary":
         df.predicted_con = predictions[:, 0]
     else:
-        raise ValueError(f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
+        raise ValueError(
+            f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
 
     return df
 
 
-def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: int = 512):
+def make_sbert_predictions(
+        df: pd.DataFrame,
+        model,
+        model_name: str,
+        max_len: int = 512):
     """Make predictions using SBERt trained model.
 
     :param df: Pandas DataFrame containing data to predict on
@@ -103,20 +123,32 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
     #                                                     truncation=True)["input_ids"])
     #     predictions = torch.log_softmax(predictions, dim=1)
     labels = ClassifierDataset.get_labels()
-    df_temp = df.rename(columns={"text1": "sentence1", "text2": "sentence2", "annotation": "label"})
+    df_temp = df.rename(
+        columns={
+            "text1": "sentence1",
+            "text2": "sentence2",
+            "annotation": "label"})
     df_temp.label = df_temp.label.map(labels)
     eval_vector, eval_label = format_create(df=df_temp, model=model)
     # dictionary_mapping = ClassifierDataset.get_mappings()
     # predictions = predictions.cpu().numpy()
     predictions = model.logisticregression.predict(eval_vector)
-    df['predicted_con'] = predictions[:, labels['contradiction']]
-    df['predicted_ent'] = predictions[:, labels['entailment']]
-    df['predicted_neu'] = predictions[:, labels['neutral']]
+    df['predicted_con'] = np.where(
+        predictions == labels['contradiction'], 1, 0)
+    # df['predicted_con'] = predictions[:, labels['contradiction']]
+    df['predicted_ent'] = np.where(predictions == labels['entailment'], 1, 0)
+    # df['predicted_ent'] = predictions[:, labels['entailment']]
+    df['predicted_neu'] = np.where(predictions == labels['neutral'], 1, 0)
+    # df['predicted_neu'] = predictions[:, labels['neutral']]
     # Calculate predicted class as the max predicted label
-    df['predicted_class'] = df[['predicted_con', 'predicted_ent', 'predicted_neu']].idxmax(axis=1)
-    df.predicted_class.replace(to_replace={'predicted_con': 'contradiction',
-                                           'predicted_ent': 'entailment',
-                                           'predicted_neu': 'neutral'}, inplace=True)
+    df['predicted_class'] = df[['predicted_con',
+                                'predicted_ent', 'predicted_neu']].idxmax(axis=1)
+    df.predicted_class.replace(
+        to_replace={
+            'predicted_con': 'contradiction',
+            'predicted_ent': 'entailment',
+            'predicted_neu': 'neutral'},
+        inplace=True)
     # df.loc[:, 'prediction'] = predictions.argmax(axis=1).to("cpu").numpy()
 
     # df.loc[:, 'predicted_class'] = df['prediction'].apply(lambda x: dictionary_mapping[x])
@@ -143,7 +175,13 @@ def print_pair(claim1: str, claim2: str, score: float, round_num: int = 3):
     return out
 
 
-def print_pair_2(claim1: str, claim2: str, true_label: str, predicted_label: str, score: float, round_num: int = 3):
+def print_pair_2(
+        claim1: str,
+        claim2: str,
+        true_label: str,
+        predicted_label: str,
+        score: float,
+        round_num: int = 3):
     """
     Print the claims pair in a nicely formatted way when the model disagrees with annotation.
 
@@ -226,9 +264,12 @@ def custom_plot_confusion_matrix(cm,
 
     plt.tight_layout()
     plt.ylabel('True label')
-    plt.xlabel(f"Predicted label\naccuracy={accuracy:0.4f}; misclass={misclass:0.4f}")
+    plt.xlabel(
+        f"Predicted label\naccuracy={accuracy:0.4f}; misclass={misclass:0.4f}")
     # plt.show()
-    plot_path = os.path.join(out_plot_dir, f"ConfMat_{model_id}_{time.month}-{time.day}-{time.year}.png")
+    plot_path = os.path.join(
+        out_plot_dir,
+        f"ConfMat_{model_id}_{time.month}-{time.day}-{time.year}.png")
     plt.savefig(plot_path)
 
 
@@ -281,8 +322,12 @@ def create_report(df: pd.DataFrame,
 
         if method == "multiclass":
             accuracy = accuracy_score(df.annotation, df.predicted_class)
-            precision = precision_score(df.annotation, df.predicted_class, average=None)
-            recall = recall_score(df.annotation, df.predicted_class, average=None)
+            precision = precision_score(
+                df.annotation, df.predicted_class, average=None)
+            recall = recall_score(
+                df.annotation,
+                df.predicted_class,
+                average=None)
             f1 = f1_score(df.annotation, df.predicted_class, average=None)
 
             out_file.write(f"Accuracy: {accuracy:.{round_num}f}\n")
@@ -294,76 +339,104 @@ def create_report(df: pd.DataFrame,
             pass  # NOTE: I don't think we should be doing binary classification
 
         else:
-            raise ValueError(f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
+            raise ValueError(
+                f"{method} not a valid method type. Must be \"multiclass\" or \"binary\"")
 
-        # Code for including the top predicted examples of each class in the report
+        # Code for including the top predicted examples of each class in the
+        # report
         if include_top_scoring:
-            out_file.write(f"The top {k} most contradictory pairs are as follows:\n")
-            out_file.write("===================================================\n")
-            df_top_con = df.sort_values(by='predicted_con', ascending=False).head(k)
+            out_file.write(
+                f"The top {k} most contradictory pairs are as follows:\n")
+            out_file.write(
+                "===================================================\n")
+            df_top_con = df.sort_values(
+                by='predicted_con', ascending=False).head(k)
             for i in range(k):
                 pair_i = df_top_con.iloc[i]
-                formatted_pair = print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_con)
+                formatted_pair = print_pair(
+                    pair_i.text1, pair_i.text2, pair_i.predicted_con)
                 out_file.write(formatted_pair)
             out_file.write("\n\n")
 
-            out_file.write(f"The top {k} most entailing pairs are as follows:\n")
-            out_file.write("=================================================\n")
-            df_top_ent = df.sort_values(by='predicted_ent', ascending=False).head(k)
+            out_file.write(
+                f"The top {k} most entailing pairs are as follows:\n")
+            out_file.write(
+                "=================================================\n")
+            df_top_ent = df.sort_values(
+                by='predicted_ent', ascending=False).head(k)
             for i in range(k):
                 pair_i = df_top_ent.iloc[i]
-                formatted_pair = print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_ent)
+                formatted_pair = print_pair(
+                    pair_i.text1, pair_i.text2, pair_i.predicted_ent)
                 out_file.write(formatted_pair)
             out_file.write("\n\n")
 
             out_file.write(f"The top {k} most neutral pairs are as follows:\n")
             out_file.write("===============================================\n")
-            df_top_neu = df.sort_values(by='predicted_neu', ascending=False).head(k)
+            df_top_neu = df.sort_values(
+                by='predicted_neu', ascending=False).head(k)
             for i in range(k):
                 pair_i = df_top_neu.iloc[i]
-                formatted_pair = print_pair(pair_i.text1, pair_i.text2, pair_i.predicted_neu)
+                formatted_pair = print_pair(
+                    pair_i.text1, pair_i.text2, pair_i.predicted_neu)
                 out_file.write(formatted_pair)
             out_file.write("\n\n")
 
     if plot_rocs:
         n_classes = 3
-        # Need to double check if this is the right mapping of 0 1 2 to con/ent/neu
-        binarized_annotations = label_binarize(df.annotation, classes=["contradiction", "entailment", "neutral"])
-        predicted_annotations = np.array(df[['predicted_con', 'predicted_ent', 'predicted_neu']])
+        # Need to double check if this is the right mapping of 0 1 2 to
+        # con/ent/neu
+        binarized_annotations = label_binarize(
+            df.annotation, classes=[
+                "contradiction", "entailment", "neutral"])
+        predicted_annotations = np.array(
+            df[['predicted_con', 'predicted_ent', 'predicted_neu']])
 
         # Compute ROC curve and ROC area for each class
         fpr = {}
         tpr = {}
         roc_auc = {}
         for i in range(n_classes):
-            fpr[i], tpr[i], _ = roc_curve(binarized_annotations[:, i], predicted_annotations[:, i])
+            fpr[i], tpr[i], _ = roc_curve(
+                binarized_annotations[:, i], predicted_annotations[:, i])
             roc_auc[i] = auc(fpr[i], tpr[i])
 
         # Compute micro-average ROC curve and ROC area
-        fpr["micro"], tpr["micro"], _ = roc_curve(binarized_annotations.ravel(), predicted_annotations.ravel())
+        fpr["micro"], tpr["micro"], _ = roc_curve(
+            binarized_annotations.ravel(), predicted_annotations.ravel())
         roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
         # Plot ROC curve
         plt.figure()
-        plt.plot(fpr["micro"], tpr["micro"],
-                 label=f'micro-average ROC curve (area = {roc_auc["micro"]:0.{round_num}f})')
+        plt.plot(
+            fpr["micro"],
+            tpr["micro"],
+            label=f'micro-average ROC curve (area = {roc_auc["micro"]:0.{round_num}f})')
         for i in range(n_classes):
-            plt.plot(fpr[i], tpr[i], label=f'ROC curve of class {i} (area = {roc_auc[i]:0.{round_num}f})')
+            plt.plot(
+                fpr[i],
+                tpr[i],
+                label=f'ROC curve of class {i} (area = {roc_auc[i]:0.{round_num}f})')
 
-        plot_path = os.path.join(out_plot_dir, f"ROC_{model_id}_{now.month}-{now.day}-{now.year}.png")
+        plot_path = os.path.join(
+            out_plot_dir,
+            f"ROC_{model_id}_{now.month}-{now.day}-{now.year}.png")
         plt.plot([0, 1], [0, 1], 'k--')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Some extension of Receiver operating characteristic to multi-class')
+        plt.title(
+            'Some extension of Receiver operating characteristic to multi-class')
         plt.legend(loc="lower right")
         plt.savefig(plot_path)
 
     if plot_confusion_matrix:
         conf_mat = confusion_matrix(df.annotation, df.predicted_class)
         # Need to check the order of the labels is right
-        custom_plot_confusion_matrix(conf_mat, ["contradiction", "entailment", "neutral"], out_plot_dir, model_id, now)
+        custom_plot_confusion_matrix(
+            conf_mat, [
+                "contradiction", "entailment", "neutral"], out_plot_dir, model_id, now)
 
     if write_disagreements:
         disagreements = df[df.annotation != df.predicted_class]
@@ -372,13 +445,19 @@ def create_report(df: pd.DataFrame,
         with open(os.path.join(out_report_dir, "disagreements.txt"), 'w') as dis_file:
 
             # disagreements[['text1', 'text2', 'annotation', 'predicted_class', 'predicted_class_prob']]
-            dis_file.write("PAIRS OF CLAIMS WHOSE PREDICTIONS DISAGREE WITH OUR ANNOTATIONS\n")
-            dis_file.write("===============================================================\n")
+            dis_file.write(
+                "PAIRS OF CLAIMS WHOSE PREDICTIONS DISAGREE WITH OUR ANNOTATIONS\n")
+            dis_file.write(
+                "===============================================================\n")
             dis_file.write(f"\n{len(disagreements)} disagreements total\n")
 
             for i in range(len(disagreements)):
                 pair_i = disagreements.iloc[i]
-                out = print_pair_2(pair_i.text1, pair_i.text2, pair_i.annotation, pair_i.predicted_class,
-                                   pair_i.predicted_class_prob)
+                out = print_pair_2(
+                    pair_i.text1,
+                    pair_i.text2,
+                    pair_i.annotation,
+                    pair_i.predicted_class,
+                    pair_i.predicted_class_prob)
                 dis_file.write(out)
             dis_file.write("\n")
