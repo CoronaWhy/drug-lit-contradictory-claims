@@ -208,7 +208,7 @@ def trainer(model: SBERTPredictor,
     )  # train the Transformer layer
     freeze_layer(model.embedding_model)
     X, y = format_create(df_train)
-    X_test, y_test = format_create(df_val)
+    X_test, y_test = format_create(df_val, model)
     model.logisticregression.fit(X, y)
     print(classification_report(y_test, model.logisticregression.predict(X_test)))  # noqa: T001
 
