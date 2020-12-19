@@ -8,12 +8,13 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from contradictory_claims.models.dataloader import ClassifierDataset
 from contradictory_claims.models.train_model import regular_encode
 from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, precision_score, recall_score, roc_curve
 from sklearn.preprocessing import label_binarize
 from transformers import AutoTokenizer
+
+from .dataloader import format_create
 
 
 def read_data_from_excel(data_path: str, active_sheet: str, drop_na: bool = True):
@@ -86,25 +87,28 @@ def make_sbert_predictions(df: pd.DataFrame, model, model_name: str, max_len: in
     :param method: "multiclass" or "binary"--describes setting for prediction outputs
     :return: Pandas DataFrame augmented with predictions made using trained model
     """
-    if model_name == "covidbert":
-        model_name = "deepset/covid_bert_base"
-    else:
-        model_name = "allenai/biomed_roberta_base"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    with torch.no_grad():
-        predictions = model(tokenizer.batch_encode_plus(df['text1'].values.tolist(),
-                                                        max_length=max_len,
-                                                        pad_to_max_length=True,
-                                                        truncation=True)["input_ids"],
-                            tokenizer.batch_encode_plus(df['text2'].values.tolist(),
-                                                        max_length=max_len,
-                                                        pad_to_max_length=True,
-                                                        truncation=True)["input_ids"])
-        predictions = torch.log_softmax(predictions, dim=1)
-
-    # dictionary_mapping = ClassifierDataset.get_mappings()
+    # if model_name == "covidbert":
+    #     model_name = "deepset/covid_bert_base"
+    # else:
+    #     model_name = "allenai/biomed_roberta_base"
+    # tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # with torch.no_grad():
+    #     predictions = model(tokenizer.batch_encode_plus(df['text1'].values.tolist(),
+    #                                                     max_length=max_len,
+    #                                                     pad_to_max_length=True,
+    #                                                     truncation=True)["input_ids"],
+    #                         tokenizer.batch_encode_plus(df['text2'].values.tolist(),
+    #                                                     max_length=max_len,
+    #                                                     pad_to_max_length=True,
+    #                                                     truncation=True)["input_ids"])
+    #     predictions = torch.log_softmax(predictions, dim=1)
     labels = ClassifierDataset.get_labels()
-    predictions = predictions.cpu().numpy()
+    df_temp = df.rename(columns={"text1": "sentence1", "text2": "sentence2", "annotation": "label"})
+    df_temp.label = df_temp.label.map(labels)
+    eval_vector, eval_label = format_create(df=df_temp, model=model)
+    # dictionary_mapping = ClassifierDataset.get_mappings()
+    # predictions = predictions.cpu().numpy()
+    predictions = model.logisticregression.predict(eval_vector)
     df['predicted_con'] = predictions[:, labels['contradiction']]
     df['predicted_ent'] = predictions[:, labels['entailment']]
     df['predicted_neu'] = predictions[:, labels['neutral']]
