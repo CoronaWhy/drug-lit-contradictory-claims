@@ -19,8 +19,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 from transformers import AutoModel, AutoTokenizer
 
-from .dataloader import ClassifierDataset, NLIDataReader
-from .dataloader import collate_fn, format_create
+from .dataloader import NLIDataReader
+from .dataloader import format_create
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
 
@@ -207,7 +207,7 @@ def trainer(model: SBERTPredictor,
         warmup_steps=warmup_steps,
     )  # train the Transformer layer
     freeze_layer(model.embedding_model)
-    X, y = format_create(df_train)
+    X, y = format_create(df_train, model)
     X_test, y_test = format_create(df_val, model)
     model.logisticregression.fit(X, y)
     print(classification_report(y_test, model.logisticregression.predict(X_test)))  # noqa: T001
