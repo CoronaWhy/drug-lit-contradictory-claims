@@ -55,8 +55,8 @@ class SBERTPredictor(SentenceTransformer):
         else:
             self._target_device = torch.device(device)
         self.to(self._target_device)
-        self.logisticregression = LogisticRegression(warm_start=False, max_iter=500,
-                                                     class_weight="balanced")
+        self.logisticregression = LogisticRegression(
+            warm_start=False, max_iter=500, class_weight="balanced")
 
     def forward(self, sentence1, sentence2):
         """Forward function.
@@ -149,7 +149,7 @@ def trainer(model: SBERTPredictor,
     """
     if embedding_epochs is None:
         embedding_epochs = epochs
-    nli_reader = NLIDataReader(df_train.apend(df_val)
+    nli_reader = NLIDataReader(df_train.apend(df_val))
     train_num_labels = nli_reader.get_num_labels()
 
     train_data = SentencesDataset(
@@ -175,7 +175,11 @@ def trainer(model: SBERTPredictor,
         sentences2=df_val["sentence2"].values,
         scores=df_val["label"].values / 2.,
         batch_size=batch_size)
-    warmup_steps = math.ceil(len(train_dataloader_embed) * epochs / batch_size * 0.1)  # 10% of train data for warm-up
+    warmup_steps = math.ceil(
+        len(train_dataloader_embed) *
+        epochs /
+        batch_size *
+        0.1)  # 10% of train data for warm-up
 
     # now to train the final layer
     # train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
