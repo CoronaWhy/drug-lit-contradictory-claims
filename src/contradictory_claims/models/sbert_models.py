@@ -149,7 +149,7 @@ def trainer(model: SBERTPredictor,
     """
     if embedding_epochs is None:
         embedding_epochs = epochs
-    nli_reader = NLIDataReader(df_train)
+    nli_reader = NLIDataReader(df_train.apend(df_val)
     train_num_labels = nli_reader.get_num_labels()
 
     train_data = SentencesDataset(
