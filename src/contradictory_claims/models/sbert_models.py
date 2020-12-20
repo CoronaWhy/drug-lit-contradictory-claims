@@ -175,11 +175,8 @@ def trainer(model: SBERTPredictor,
         sentences2=df_val["sentence2"].values,
         scores=df_val["label"].values / 2.,
         batch_size=batch_size)
-    warmup_steps = math.ceil(
-        len(train_dataloader_embed) *
-        epochs /
-        batch_size *
-        0.1)  # 10% of train data for warm-up
+    warmup_steps = math.ceil(len(train_dataloader_embed) * epochs / batch_size * 0.1)
+    # 10% of train data for warm-up
 
     # now to train the final layer
     # train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
