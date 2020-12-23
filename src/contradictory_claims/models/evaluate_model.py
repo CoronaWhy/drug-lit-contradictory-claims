@@ -62,8 +62,7 @@ def make_predictions(
     for i in range(len(df)):
         # NOTE: this expects columns named "text1" and "text2" for the two
         # claims
-        inputs.append(str('[CLS]' + df.loc[i, 'text1'] +
-                          '[SEP]' + df.loc[i, 'text2']))
+        inputs.append(str('[CLS]' + df.loc[i, 'text1'] + '[SEP]' + df.loc[i, 'text2']))
 
     # Then make predictions
     tokenizer = AutoTokenizer.from_pretrained(model_name)
