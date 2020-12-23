@@ -264,9 +264,10 @@ def build_sbert_model(model_name: str):
 
 def train_sbert_model(sbert_model,
                       tokenizer,
-                      mancon_corpus=False,
-                      med_nli=False,
-                      multi_nli=False,
+                      use_man_con=False,
+                      use_med_nli=False,
+                      use_multi_nli=False,
+                      use_cord=False,
                       multi_nli_train_x: np.ndarray = None,
                       multi_nli_train_y: np.ndarray = None,
                       multi_nli_test_x: np.ndarray = None,
@@ -279,6 +280,10 @@ def train_sbert_model(sbert_model,
                       man_con_train_x: np.ndarray = None,
                       man_con_test_x: np.ndarray = None,
                       man_con_test_y: np.ndarray = None,
+                      cord_train_x: np.ndarray = None,
+                      cord_train_y: np.ndarray = None,
+                      cord_test_x: np.ndarray = None,
+                      cord_test_y: np.ndarray = None,
                       batch_size: int = 2,
                       num_epochs: int = 1,
                       learning_rate: float = 1e-7,
@@ -289,12 +294,12 @@ def train_sbert_model(sbert_model,
 
     :param model_name: model to be used, currently supported: covidbert or biobert
     :param tokenizer: the tokenizer corresponding to the model being used"
-    :param mancon_corpus: [description], defaults to False
-    :type mancon_corpus: bool, optional
-    :param med_nli: [description], defaults to False
-    :type med_nli: bool, optional
-    :param multi_nli: [description], defaults to False
-    :type multi_nli: bool, optional
+    :param use_man_con: [description], defaults to False
+    :type use_man_con: bool, optional
+    :param use_med_nli: [description], defaults to False
+    :type use_med_nli: bool, optional
+    :param use_multi_nli: [description], defaults to False
+    :type use_multi_nli: bool, optional
     :param multi_nli_train_x: [description], defaults to None
     :type multi_nli_train_x: np.ndarray, optional
     :param multi_nli_train_y: [description], defaults to None
@@ -310,7 +315,7 @@ def train_sbert_model(sbert_model,
     :param learning_rate: defaults to 1e-7
     :type learning_rate: float
     """
-    if multi_nli:
+    if use_multi_nli:
         if multi_nli_train_x is not None:
 
             df_multi_train = remove_tokens_get_sentence_sbert(
@@ -329,7 +334,7 @@ def train_sbert_model(sbert_model,
                 embedding_epochs=embedding_epochs,
                 enable_class_weights=enable_class_weights)
 
-    if med_nli:
+    if use_med_nli:
         if med_nli_train_x is not None:
 
             df_mednli_train = remove_tokens_get_sentence_sbert(
@@ -348,7 +353,7 @@ def train_sbert_model(sbert_model,
                 embedding_epochs=embedding_epochs,
                 enable_class_weights=enable_class_weights)
 
-    if mancon_corpus:
+    if use_man_con:
         if man_con_train_x is not None:
 
             df_mancon_train = remove_tokens_get_sentence_sbert(
@@ -361,6 +366,25 @@ def train_sbert_model(sbert_model,
                 tokenizer=tokenizer,
                 df_train=df_mancon_train,
                 df_val=df_mancon_val,
+                epochs=num_epochs,
+                batch_size=batch_size,
+                learning_rate=learning_rate,
+                embedding_epochs=embedding_epochs,
+                enable_class_weights=enable_class_weights)
+
+    if use_cord:
+        if cord_train_x is not None:
+
+            df_cord_train = remove_tokens_get_sentence_sbert(
+                cord_train_x, cord_train_y)
+            df_cord_val = remove_tokens_get_sentence_sbert(
+                cord_test_x, cord_test_y)
+
+            trainer(
+                model=sbert_model,
+                tokenizer=tokenizer,
+                df_train=df_cord_train,
+                df_val=df_cord_val,
                 epochs=num_epochs,
                 batch_size=batch_size,
                 learning_rate=learning_rate,
