@@ -139,9 +139,9 @@ def main(extract, train, report, cord_version, sbert):
             sbert_model, tokenizer = build_sbert_model(model_name)
             sbert_model = train_sbert_model(sbert_model,
                                             tokenizer=tokenizer,
-                                            mancon_corpus=True,
-                                            med_nli=True,
-                                            multi_nli=True,
+                                            use_man_con=True,
+                                            use_med_nli=True,
+                                            use_multi_nli=True,
                                             multi_nli_train_x=multi_nli_train_x,
                                             multi_nli_train_y=multi_nli_train_y,
                                             multi_nli_test_x=multi_nli_test_x,
