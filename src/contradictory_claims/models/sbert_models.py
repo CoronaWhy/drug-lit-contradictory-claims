@@ -497,5 +497,5 @@ def load_sbert_model(transformer_dir: str = 'output/sbert_model',
     :return: SBERT model stored at given location
     :rtype: SBERTPredictor
     """
-    sbert_model = pickle.load(open(os.path.join(transformer_dir, file_name), "rb"))
+    sbert_model = pickle.load(open(os.path.join(transformer_dir, file_name)), "rb")
     return sbert_model
