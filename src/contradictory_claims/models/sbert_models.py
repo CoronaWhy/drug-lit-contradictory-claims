@@ -295,11 +295,13 @@ def trainer(model: SBERTPredictor,
     print("---------TRAINING ENDED------------")  # noqa: T001
 
 
-def build_sbert_model(model_name: str):
+def build_sbert_model(model_name: str, logistic_model: bool = True):
     """Build SBERT model, based on model name provided.
 
     :param model_name: model to be used, currently supported: covidbert or biobert
     :type model_name: str
+    :param logistic_model: use logistic regression as classifier
+    :type logistic_model: bool
     :return: SBERT model and corresponding tokenizer
     """
     if model_name == "covidbert":
@@ -335,7 +337,7 @@ def build_sbert_model(model_name: str):
                                    pooling_mode_max_tokens=False)
     # generating biobert sentence embeddings (mean pooling of sentence
     # embedding vectors)
-    sbert_model = SBERTPredictor(word_embedding_model, pooling_model)
+    sbert_model = SBERTPredictor(word_embedding_model, pooling_model, logistic_model=logistic_model)
     return sbert_model, tokenizer
 
 
