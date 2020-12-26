@@ -33,7 +33,7 @@ class TestSbertModel(unittest.TestCase):
     def test_save_load_sbert_model(self):
         """Test Loading and Saving of model."""
         os.makedirs(self.out_dir, exist_ok=True)
-        save_sbert_model(self.sbert_model, self.out_dir)
+        save_sbert_model(self.sbert_model, timed_dir_name=False, transformer_dir=self.out_dir)
         self.assertTrue(os.path.exists(self.out_dir))
         sbert_model = load_sbert_model(self.out_dir)
         self.assertIsNotNone(sbert_model)
