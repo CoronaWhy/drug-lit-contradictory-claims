@@ -154,7 +154,7 @@ def main(extract, train, report, cord_version, sbert):
                                             man_con_train_x=man_con_train_x,
                                             man_con_test_x=man_con_test_x,
                                             man_con_test_y=man_con_test_y)
-            save_sbert_model(sbert_model)
+            save_sbert_model(model=sbert_model, transformer_dir=sbert_trained_model_out_dir)
         else:
             # Train model
             trained_model, _ = train_model(multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y,
