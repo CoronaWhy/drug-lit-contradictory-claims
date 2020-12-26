@@ -14,8 +14,6 @@ from sklearn.metrics import accuracy_score, auc, confusion_matrix, f1_score, pre
 from sklearn.preprocessing import label_binarize
 from transformers import AutoTokenizer
 
-from .dataloader import format_create
-
 
 def read_data_from_excel(
         data_path: str,
@@ -128,10 +126,11 @@ def make_sbert_predictions(
             "text2": "sentence2",
             "annotation": "label"})
     df_temp.label = df_temp.label.map(labels)
-    eval_vector, eval_label = format_create(df=df_temp, model=model)
+    # eval_vector, eval_label = format_create(df=df_temp, model=model)
     # dictionary_mapping = ClassifierDataset.get_mappings()
     # predictions = predictions.cpu().numpy()
-    predictions = model.logisticregression.predict(eval_vector)
+    # predictions = model.logisticregression.predict(eval_vector)
+    predictions = model.predict(df.text1.values, df.text2.values)
     df['predicted_con'] = np.where(
         predictions == labels['contradiction'], 1, 0)
     # df['predicted_con'] = predictions[:, labels['contradiction']]
