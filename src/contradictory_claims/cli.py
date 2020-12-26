@@ -26,7 +26,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--report/--no-report', 'report', default=False)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
 @click.option('--sbert', 'sbert', default=False)
-def main(extract, train, report, cord_version, sbert):
+@click.option('--logistic-regression/--no-logistic-regression', 'logistic_model', default=True)
+def main(extract, train, report, cord_version, sbert, logistic_model):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -136,7 +137,7 @@ def main(extract, train, report, cord_version, sbert):
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         if sbert:
-            sbert_model, tokenizer = build_sbert_model(model_name)
+            sbert_model, tokenizer = build_sbert_model(model_name, logistic_model=logistic_model)
             sbert_model = train_sbert_model(sbert_model,
                                             tokenizer=tokenizer,
                                             use_man_con=True,
@@ -153,7 +154,9 @@ def main(extract, train, report, cord_version, sbert):
                                             man_con_train_y=man_con_train_y,
                                             man_con_train_x=man_con_train_x,
                                             man_con_test_x=man_con_test_x,
-                                            man_con_test_y=man_con_test_y)
+                                            man_con_test_y=man_con_test_y,
+                                            batch_size=16,
+                                            num_epochs=2)
             save_sbert_model(model=sbert_model, transformer_dir=sbert_trained_model_out_dir)
         else:
             # Train model
