@@ -430,7 +430,7 @@ def save_sbert_model(model: SBERTPredictor,
     if not os.path.exists(transformer_dir):
         os.makedirs(transformer_dir)
 
-    pickle.dump(model, os.path.join(transformer_dir, 'sigmoid.pickle'))
+    pickle.dump(model, open(os.path.join(transformer_dir, 'sigmoid.pickle'), "wb"))
 
 
 def load_sbert_model(transformer_dir: str = 'output/sbert_model',
