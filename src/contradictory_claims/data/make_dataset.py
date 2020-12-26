@@ -191,7 +191,7 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + mancon_data.text_a + '[SEP]' + mancon_data.text_b, mancon_data['label'], test_size=0.2,
-        stratify = mancon_data['label'])
+        stratify=mancon_data['label'])
     if multi_class:
         x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
         x_test = x_test.to_numpy()
@@ -248,7 +248,6 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     return drug_names, virus_names
 
 
-
 def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     """Convert Data recieved as a single format by preprocessing multi_nli, med_nli or mancon.
 
@@ -272,6 +271,7 @@ def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     df = pd.concat([x_df, y_df], axis=1)
     return df
 
+
 def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True):
     """
     Load CORD-19 annotated claim pairs for training.
@@ -293,7 +293,7 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
-        stratify = cord_data['label'])
+        stratify=cord_data['label'])
     if multi_class:
         x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
         x_test = x_test.to_numpy()
@@ -329,4 +329,3 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
         y_test = np.array(y_test)
 
     return x_train, y_train, x_test, y_test
-
