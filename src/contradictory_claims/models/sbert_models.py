@@ -9,7 +9,7 @@ import shutil
 
 import numpy as np
 import torch
-# import torch.optim as optim
+import torch.optim as optim
 import wget
 from sentence_transformers import SentenceTransformer, SentencesDataset
 from sentence_transformers import losses, models
@@ -19,8 +19,9 @@ from sklearn.metrics import classification_report
 from torch import nn
 from torch.utils.data import DataLoader
 from transformers import AutoModel, AutoTokenizer
+from tqdm import tqdm
 
-from .dataloader import NLIDataReader
+from .dataloader import ClassifierDataset, collate_fn, multi_acc, NLIDataReader
 from .dataloader import format_create
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
@@ -113,7 +114,7 @@ class SBERTPredictor(SentenceTransformer):
         :param sentence2: list of input sentence2
         :type sentence2: list(str)
         """
-        if self.logistic_model:
+        if self.logistic_model is True:
             net_vector = self.vector(sentence1, sentence2)
             predictions = self.logisticregression.predict(net_vector)
             return predictions
@@ -196,23 +197,25 @@ def trainer(model: SBERTPredictor,
     # 10% of train data for warm-up
 
     # now to train the final layer
-    # train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
-    # val_dataset = ClassifierDataset(df_val, tokenizer=tokenizer)
-    # if not enable_class_weights:
-    #     class_weights = None
-    # else:
-    #     class_weights = train_dataset.class_weights()
+    train_dataset = ClassifierDataset(df_train, tokenizer=tokenizer)
+    val_dataset = ClassifierDataset(df_val, tokenizer=tokenizer)
+    if enable_class_weights is False:
+        class_weights = None
+    else:
+        class_weights = train_dataset.class_weights()
+
+    train_dataloader = DataLoader(dataset=train_dataset,
+                                  batch_size=batch_size,
+                                  collate_fn=collate_fn,
+                                  shuffle=True)
+    val_dataloader = DataLoader(dataset=val_dataset,
+                                batch_size=1,
+                                collate_fn=collate_fn)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.to(device)
-    # accuracy_stats = {"train": [],
-    #                   "val": [],
-    #                   }
-    # loss_stats = {"train": [],
-    #               "val": [],
-    #               }
 
     print("------TRAINING STARTS----------")  # noqa: T001
     # train embedding layer
@@ -229,8 +232,60 @@ def trainer(model: SBERTPredictor,
     freeze_layer(model.embedding_model)
     X, y = format_create(df=df_train.append(df_val), model=model)
     X_test, y_test = format_create(df=df_val, model=model)
-    model.logisticregression.fit(X, y)
-    print(classification_report(y_test, model.logisticregression.predict(X_test)))  # noqa: T001
+    if model.logistic_model is True:
+        model.logisticregression.fit(X, y)
+        print(classification_report(y_test, model.logisticregression.predict(X_test)))  # noqa: T001
+    else:
+        accuracy_stats = {"train": [],
+                          "val": [],
+                          }
+        loss_stats = {"train": [],
+                      "val": [],
+                      }
+
+        for e in range(epochs):
+            train_epoch_loss = 0
+            train_epoch_acc = 0
+            model.train()
+            for sentence1, sentence2, label in tqdm(train_dataloader):
+                label = label.to(device)
+                optimizer.zero_grad()
+                y_train_pred = model(sentence1, sentence2)
+
+                train_loss = criterion(y_train_pred, label)
+                train_acc = multi_acc(y_train_pred, label)
+
+                train_loss.backward()
+                optimizer.step()
+
+                train_epoch_loss += train_loss.item()
+                train_epoch_acc += train_acc.item()
+
+            # VALIDATION
+            with torch.no_grad():
+
+                val_epoch_loss = 0
+                val_epoch_acc = 0
+
+                model.eval()
+                for sentence1, sentence2, label in val_dataloader:
+                    label = label.to(device)
+                    y_val_pred = model(sentence1, sentence2)
+
+                    val_loss = criterion(y_val_pred, label)
+                    val_acc = multi_acc(y_val_pred, label)
+
+                    val_epoch_loss += val_loss.item()
+                    val_epoch_acc += val_acc.item()
+
+            loss_stats['train'].append(train_epoch_loss / len(train_dataloader))
+            loss_stats['val'].append(val_epoch_loss / len(val_dataloader))
+            accuracy_stats['train'].append(train_epoch_acc / len(train_dataloader))
+            accuracy_stats['val'].append(val_epoch_acc / len(val_dataloader))
+            print(f"Epoch {e+0:03}: | Train Loss: {train_epoch_loss/len(train_dataloader):.5f} \
+                | Val Loss: {val_epoch_loss / len(val_dataloader):.5f} \
+                | Train Acc: {train_epoch_acc/len(train_dataloader):.3f} \
+                | Val Acc: {val_epoch_acc/len(val_dataloader):.3f}")  # noqa: T001
 
     print("---------TRAINING ENDED------------")  # noqa: T001
 
@@ -442,5 +497,5 @@ def load_sbert_model(transformer_dir: str = 'output/sbert_model',
     :return: SBERT model stored at given location
     :rtype: SBERTPredictor
     """
-    sbert_model = pickle.load(os.path.join(transformer_dir, file_name))
+    sbert_model = pickle.load(open(os.path.join(transformer_dir, file_name), "rb"))
     return sbert_model
