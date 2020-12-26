@@ -120,7 +120,7 @@ class SBERTPredictor(SentenceTransformer):
             return predictions
         else:
             net_vector = self.vector(sentence1, sentence2)
-            predictions = self.linear(torch.tensor(net_vector), device=self._target_device)
+            predictions = self.linear(torch.tensor(net_vector, device=self._target_device))
             predictions = torch.log_softmax(predictions, dim=1)
             predictions = torch.argmax(predictions, dim=1)
             return predictions.cpu().numpy()
