@@ -1,4 +1,4 @@
-"""Functions for building, saving, loading, and training the contradictory claims Transformer model."""
+"""Functions to build, save, load and train the contradictory claims Transformer model based on biomed_roberta_base."""
 
 # -*- coding: utf-8 -*-
 
@@ -15,20 +15,28 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import PolynomialDecay
 from transformers import AutoModel, AutoModelWithLMHead, AutoTokenizer, TFAutoModel
 from wandb.keras import WandbCallback
 
 
-def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: int = 512):
+def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: int = 512,
+                   multi_class: bool = True):
     """
     Encode sentences for input to Transformer models.
 
     :param texts: list of strings to be encoded
     :param tokenizer: tokenizer for encoding
     :param maxlen: max number of characters of input string being encoded
+    :param multi_class: if True, the default truncation is applied. If False, implies auxillary input and
+        custom truncation is applied.
     :return: numpy array of encoded strings
     """
     # TODO: Intersphinx link to transformers.AutoTokenizer is failing. What's wrong with my docs/source/conf.py?
+    if not multi_class:
+        # If len > maxlen, truncate text upto maxlen-8 characters and append the 8-character auxillary input
+        texts = [text[:maxlen - 8] + text[-8:] if len(text) > maxlen else text for text in texts]
+
     enc_di = tokenizer.batch_encode_plus(texts,
                                          return_attention_mask=False,
                                          return_token_type_ids=False,
@@ -40,7 +48,7 @@ def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: i
     return np.array(enc_di['input_ids'])
 
 
-def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # noqa: D205
+def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_decay: bool = False):  # noqa: D205
     """
     Build an end-to-end Transformer model. Requires a transformer of type TFAutoBert.
     https://www.kaggle.com/xhlulu/jigsaw-tpu-distilbert-with-huggingface-and-keras
@@ -49,6 +57,7 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # n
     :param max_len: maximum length of encoded sequence
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
+    :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
     :return: Constructed Transformer model
     """
     input_word_ids = Input(shape=(max_len,), dtype=tf.int32, name="input_word_ids")
@@ -61,12 +70,22 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True):  # n
 
     model = Model(inputs=input_word_ids, outputs=out)
 
+    if lr_decay:
+        # There are various options, starting with a linear decay for now
+        # TODO: Tune for the best decay schedule
+        lr = PolynomialDecay(initial_learning_rate=2e-5,
+                             decay_steps=10000,
+                             end_learning_rate=1e-6,
+                             power=1)
+    else:
+        lr = 1e-6
+
     if multi_class:
-        model.compile(Adam(lr=1e-6), loss='categorical_crossentropy',
+        model.compile(Adam(learning_rate=lr), loss='categorical_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
                                tf.keras.metrics.CategoricalAccuracy()])
     else:
-        model.compile(Adam(lr=1e-6), loss='binary_crossentropy',
+        model.compile(Adam(learning_rate=lr), loss='binary_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
 
     return model
@@ -106,7 +125,7 @@ def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: 
     :return: loaded model
     """  # is this function overriding the Tensorflow.keras.models function?
     transformer = TFAutoModel.from_pretrained(transformer_dir)
-    model = build_model(transformer, max_len=max_len)
+    model = build_model(transformer, max_len=max_len, multi_class=multi_class)
     sigmoid = pickle.load(open(pickle_path, 'rb'))
     if multi_class:
         model.get_layer('softmax').set_weights(sigmoid)
@@ -128,17 +147,26 @@ def train_model(multi_nli_train_x: np.ndarray,
                 man_con_train_y: np.ndarray,
                 man_con_test_x: np.ndarray,
                 man_con_test_y: np.ndarray,
+                cord_train_x: np.ndarray,
+                cord_train_y: np.ndarray,
+                cord_test_x: np.ndarray,
+                cord_test_y: np.ndarray,
                 drug_names: list,
                 virus_names: list,
                 model_name: str,
+                multi_class: bool = True,
                 continue_fine_tuning: bool = False,
                 model_continue_sigmoid_path: str = None,
                 model_continue_transformer_path: str = None,
+                use_multi_nli: bool = True,
                 use_med_nli: bool = True,
                 use_man_con: bool = True,
+                use_cord: bool = True,
                 epochs: int = 3,
                 max_len: int = 512,
-                batch_size: int = 32):
+                batch_size: int = 32,
+                lr_decay: bool = False,
+                class_weight: bool = True):
     """
     Train the Transformer model.
 
@@ -154,10 +182,16 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param man_con_train_y: ManConCorpus training labels
     :param man_con_test_x: ManConCorpus test sentence pairs
     :param man_con_test_y: ManConCorpus test labels
+    :param cord_train_x: CORD-19 training sentence pairs
+    :param cord_train_y: CORD-19 training labels
+    :param cord_test_x: CORD-19 test sentence pairs
+    :param cord_test_y: CORD-19 test labels
     :param drug_names: drug lexicon list
     :param virus_names: virus lexicon list
     :param model_name: model name to load from the pre-trained Transformers package. Expecting either
         "deepset/covid_bert_base" or "allenai/biomed_roberta_base"
+    :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
+        is sigmoid and binary crossentropy is evaluated.
     :param continue_fine_tuning: if True, continue fine tuning from a saved model
     :param model_continue_sigmoid_path: if continue_fine_tuning is True, this is the path to the pickle file with
         saved model weights
@@ -166,9 +200,12 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param use_multi_nli: if True, use MultiNLI in fine-tuning
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
+    :param use_cord: if True, use CORD-19 in fine-tuning
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
+    :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
+    :param class_weight: if True, use class weights when fine tuning
     :return: fine-tuned Transformer model
     """
     if model_name != 'deepset/covid_bert_base':
@@ -176,32 +213,42 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     # First load the real tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # tokenizer.add_tokens(drug_names + virus_names)
 
-    # NOTE: We're ignoring adding tokens for drug and virus names now because this becomes prohibitive at training time.
-    # TODO: Find out if this is okay....
+    if use_multi_nli:
+        multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
+        multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with multi_nli_train_x_str")  # noqa: T001
 
-    multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
-    multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len)
-    print("Done with multi_nli_train_x_str")  # noqa: T001
+        multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
+        multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with multi_nli_test_x_str")  # noqa: T001
 
-    multi_nli_test_x_str = [str(sen) for sen in multi_nli_test_x]
-    multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len)
-    print("Done with multi_nli_test_x_str")  # noqa: T001
+    if use_med_nli:
+        med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
+        med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with med_nli_train_x_str")  # noqa: T001
 
-    med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
-    med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len)
-    print("Done with med_nli_train_x_str")  # noqa: T001
+        med_nli_test_x_str = [str(sen) for sen in med_nli_test_x]
+        med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with med_nli_test_x_str")  # noqa: T001
 
-    med_nli_test_x_str = [str(sen) for sen in med_nli_test_x]
-    med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len)
-    print("Done with med_nli_test_x_str")  # noqa: T001
+    if use_man_con:
+        man_con_train_x_str = [str(sen) for sen in man_con_train_x]
+        man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with man_con_train_x_str")  # noqa: T001
 
-    man_con_train_x_str = [str(sen) for sen in man_con_train_x]
-    man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len)
+        man_con_test_x_str = [str(sen) for sen in man_con_test_x]
+        man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with man_con_test_x_str")  # noqa: T001
 
-    man_con_test_x_str = [str(sen) for sen in man_con_test_x]
-    man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len)
+    if use_cord:
+        cord_train_x_str = [str(sen) for sen in cord_train_x]
+        cord_train_x = regular_encode(cord_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with cord_train_x_str")  # noqa: T001
+
+        cord_test_x_str = [str(sen) for sen in cord_test_x]
+        cord_test_x = regular_encode(cord_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
+        print("Done with cord_test_x_str")  # noqa: T001
 
     es = EarlyStopping(monitor='val_accuracy',
                        min_delta=0.001,
@@ -213,8 +260,9 @@ def train_model(multi_nli_train_x: np.ndarray,
     strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     if continue_fine_tuning:
         with strategy.scope():
-            model = load_model(model_continue_sigmoid_path, model_continue_transformer_path)
-        batch_size = 2 * strategy.num_replicas_in_sync
+            model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
+        # batch_size = 2 * strategy.num_replicas_in_sync
+        batch_size = batch_size
     else:
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
@@ -223,7 +271,7 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained("covid_bert_base")
             with strategy.scope():
                 model = TFAutoModel.from_pretrained("covid_bert_base", from_pt=True)
-                model = build_model(model)
+                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
             shutil.rmtree("covid_bert_base")
         else:
             model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
@@ -232,9 +280,10 @@ def train_model(multi_nli_train_x: np.ndarray,
             model.save_pretrained("biomed_roberta_base")
             with strategy.scope():
                 model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
-                model = build_model(model)
+                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
             shutil.rmtree("biomed_roberta_base")
-        batch_size = 2 * strategy.num_replicas_in_sync
+        # batch_size = 2 * strategy.num_replicas_in_sync
+        batch_size = batch_size
 
     print(model.summary())  # noqa: T001
 
@@ -247,16 +296,20 @@ def train_model(multi_nli_train_x: np.ndarray,
     # Initialize WandB for tracking the training progress
     wandb.init(dir="./wandb_artifacts")
 
-    # Fine tune on MultiNLI
-    train_history = model.fit(multi_nli_train_x,
-                              multi_nli_train_y,
-                              batch_size=batch_size,
-                              validation_data=(multi_nli_test_x, multi_nli_test_y),
-                              callbacks=[es, WandbCallback()],
-                              epochs=epochs)
+    train_hist_list = []
 
-    print("passed the multiNLI train. Now the history:")  # noqa: T001
-    print(train_history)  # noqa: T001
+    # Fine tune on MultiNLI
+    if use_multi_nli:
+        train_history = model.fit(multi_nli_train_x,
+                                  multi_nli_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(multi_nli_test_x, multi_nli_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs)
+        train_hist_list.append(train_history)
+
+        print("passed the multiNLI train. Now the history:")  # noqa: T001
+        print(train_history)  # noqa: T001
 
     # Fine tune on MedNLI
     if use_med_nli:
@@ -266,14 +319,40 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs)
+        train_hist_list.append(train_history)
 
     # Fine tune on ManConCorpus
     if use_man_con:
+        weight_for_0 = (1 / len(man_con_train_y == 0)) * (len(man_con_train_y)) / 3.0
+        weight_for_1 = (1 / len(man_con_train_y == 1)) * (len(man_con_train_y)) / 3.0
+        weight_for_2 = (1 / len(man_con_train_y == 2)) * (len(man_con_train_y)) / 3.0
+
+        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
+
         train_history = model.fit(man_con_train_x,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=class_weight)
+        train_hist_list.append(train_history)
 
-    return model, train_history
+    # Fine tune on CORD-19
+    if use_cord:
+        weight_for_0 = (1 / len(cord_train_y == 0)) * (len(cord_train_y)) / 3.0
+        weight_for_1 = (1 / len(cord_train_y == 1)) * (len(cord_train_y)) / 3.0
+        weight_for_2 = (1 / len(cord_train_y == 2)) * (len(cord_train_y)) / 3.0
+
+        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
+
+        train_history = model.fit(cord_train_x,
+                                  cord_train_y,
+                                  batch_size=batch_size,
+                                  validation_data=(cord_test_x, cord_test_y),
+                                  callbacks=[es, WandbCallback()],
+                                  epochs=epochs,
+                                  class_weight=class_weight)
+        train_hist_list.append(train_history)
+
+    return model, train_hist_list
