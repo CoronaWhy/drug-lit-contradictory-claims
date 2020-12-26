@@ -20,7 +20,6 @@ from .models.evaluate_model import create_report, make_predictions, make_sbert_p
 from .models.sbert_models import build_sbert_model, load_sbert_model, save_sbert_model, train_sbert_model
 from .models.bluebert_train_model import bluebert_create_train_model,\
     bluebert_load_model, bluebert_save_model
-from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
 from .models.train_model import load_model, save_model, train_model
 
 
@@ -57,7 +56,6 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     sbert_trained_model_out_dir = 'output/sbert_model'
 
     bluebert_out_dir = 'output/transformer/bluebert'
-
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
@@ -164,6 +162,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
                                             use_man_con=True,
                                             use_med_nli=True,
                                             use_multi_nli=True,
+                                            use_cord=True,
                                             multi_nli_train_x=multi_nli_train_x,
                                             multi_nli_train_y=multi_nli_train_y,
                                             multi_nli_test_x=multi_nli_test_x,
@@ -176,6 +175,10 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
                                             man_con_train_x=man_con_train_x,
                                             man_con_test_x=man_con_test_x,
                                             man_con_test_y=man_con_test_y,
+                                            cord_train_x=cord_train_x,
+                                            cord_train_y=cord_train_y,
+                                            cord_test_x=cord_test_x,
+                                            cord_test_y=cord_test_y,
                                             batch_size=16,
                                             num_epochs=2)
             save_sbert_model(model=sbert_model, transformer_dir=sbert_trained_model_out_dir)
@@ -262,7 +265,8 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         if sbert:
             eval_data = make_sbert_predictions(df=eval_data, model=sbert_model, model_name=model_name)
             out_report_dir = os.path.join(sbert_trained_model_out_dir)
-            create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir, out_plot_dir=trained_model_out_dir)
+            create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir,
+                          out_plot_dir=out_report_dir)
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)
