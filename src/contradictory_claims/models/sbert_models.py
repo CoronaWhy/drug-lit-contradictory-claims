@@ -32,12 +32,14 @@ class SBERTPredictor(SentenceTransformer):
                  word_embedding_model,
                  pooling_model,
                  num_classes: int = 3,
+                 logistic_model=True,
                  device: str = None):
         """Initialize the class.
 
         :param word_embedding_model: the rod embedding model
         :param pooling_model: the pooling model
         :param num_classes: number of classes in output, defaults to 3
+        :param logistic_model: should a logistic regression model be used for classification
         :param device: device type (cuda/cpu)
         :type device: str, optional
         """
@@ -55,6 +57,7 @@ class SBERTPredictor(SentenceTransformer):
         else:
             self._target_device = torch.device(device)
         self.to(self._target_device)
+        self.logistic_model = logistic_model  # should logistic model be trained or not
         self.logisticregression = LogisticRegression(
             warm_start=False, max_iter=500, class_weight="balanced")
 
@@ -91,16 +94,30 @@ class SBERTPredictor(SentenceTransformer):
         :rtype: torch.Tensor
         """
         sentence1_embedding = self.embedding_model.encode(
-            sentence1, is_pretokenized=True)
+            sentence1, is_pretokenized=False)
         sentence2_embedding = self.embedding_model.encode(
-            sentence2, is_pretokenized=True)
-        net_vector = torch.cat(
+            sentence2, is_pretokenized=False)
+        net_vector = np.concatenate(
             (sentence1_embedding,
              sentence2_embedding,
-             torch.abs(sentence1_embedding - sentence2_embedding)),
+             np.abs(sentence1_embedding - sentence2_embedding)),
             1)
 
         return net_vector
+
+    def predict(self, sentence1, sentence2):
+        """Predict class based on input sentences.
+
+        :param sentence1: list of input sentence1
+        :type sentence1: list(str)
+        :param sentence2: list of input sentence2
+        :type sentence2: list(str)
+        """
+        if self.logistic_model:
+            net_vector = self.vector(sentence1, sentence2)
+            predictions = self.logisticregression.predict(net_vector)
+            return predictions
+        # else:
 
 
 def freeze_layer(layer):
