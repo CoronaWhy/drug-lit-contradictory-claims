@@ -266,7 +266,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
             eval_data = make_sbert_predictions(df=eval_data, model=sbert_model, model_name=model_name)
             out_report_dir = os.path.join(sbert_trained_model_out_dir)
             create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir,
-                          out_plot_dir=out_report_dir)
+                          out_plot_dir=sbert_trained_model_out_dir)
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)
