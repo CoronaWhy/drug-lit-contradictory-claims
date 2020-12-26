@@ -3,8 +3,8 @@
 
 from collections import Counter
 
-import torch
 import numpy as np
+import torch
 from sentence_transformers.readers import InputExample
 from torch.utils.data import Dataset
 
@@ -115,6 +115,7 @@ def collate_fn(batch):
 
 def format_create(df, model):
     """Return required format vector as input for logistic regression.
+
     returns (u,v,|u-v|) vector
 
     :param df: DataFrame containing "sentence1","sentence2","label" column names
@@ -123,8 +124,10 @@ def format_create(df, model):
     :type model: SBERTPredictor
     :return: vector and label input for input to sklearn classification model
     """
-    sentence1 = model.embedding_model.encode(df.sentence1.values, is_pretokenized=False)
-    sentence2 = model.embedding_model.encode(df.sentence2.values, is_pretokenized=False)
+    sentence1 = model.embedding_model.encode(
+        df.sentence1.values, is_pretokenized=False)
+    sentence2 = model.embedding_model.encode(
+        df.sentence2.values, is_pretokenized=False)
     net_vector = np.concatenate(
         (sentence1, sentence2, np.abs(
             sentence1 - sentence2)), axis=1)

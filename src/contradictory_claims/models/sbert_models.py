@@ -18,10 +18,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from torch import nn
 from torch.utils.data import DataLoader
-from transformers import AutoModel, AutoTokenizer
 from tqdm import tqdm
+from transformers import AutoModel, AutoTokenizer
 
-from .dataloader import ClassifierDataset, collate_fn, multi_acc, NLIDataReader
+from .dataloader import ClassifierDataset, NLIDataReader, collate_fn, multi_acc
 from .dataloader import format_create
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
@@ -120,7 +120,10 @@ class SBERTPredictor(SentenceTransformer):
             return predictions
         else:
             net_vector = self.vector(sentence1, sentence2)
-            predictions = self.linear(torch.tensor(net_vector, device=self._target_device))
+            predictions = self.linear(
+                torch.tensor(
+                    net_vector,
+                    device=self._target_device))
             predictions = torch.log_softmax(predictions, dim=1)
             predictions = torch.argmax(predictions, dim=1)
             return predictions.cpu().numpy()
@@ -152,7 +155,7 @@ def trainer(model: SBERTPredictor,
             learning_rate: float = 1e-5,
             batch_size: int = 16,
             embedding_epochs: int = None,
-            enable_class_weights: bool = True
+            enable_class_weights: bool = True,
             ):
     """Train the SBERT model using a training data loader and a validation dataloader.
 
@@ -198,7 +201,8 @@ def trainer(model: SBERTPredictor,
         sentences2=df_val["sentence2"].values,
         scores=df_val["label"].values / 2.,
         batch_size=batch_size)
-    warmup_steps = math.ceil(len(train_dataloader_embed) * epochs / batch_size * 0.1)
+    warmup_steps = math.ceil(
+        len(train_dataloader_embed) * epochs / batch_size * 0.1)
     # 10% of train data for warm-up
 
     # now to train the final layer
@@ -235,11 +239,11 @@ def trainer(model: SBERTPredictor,
         warmup_steps=warmup_steps,
     )  # train the Transformer layer
     freeze_layer(model.embedding_model)
-    X, y = format_create(df=df_train.append(df_val), model=model)
-    X_test, y_test = format_create(df=df_val, model=model)
+    x, y = format_create(df=df_train.append(df_val), model=model)
+    x_test, y_test = format_create(df=df_val, model=model)
     if model.logistic_model is True:
-        model.logisticregression.fit(X, y)
-        print(classification_report(y_test, model.logisticregression.predict(X_test)))  # noqa: T001
+        model.logisticregression.fit(x, y)
+        print(classification_report(y_test, model.logisticregression.predict(x_test)))  # noqa: T001
     else:
         accuracy_stats = {"train": [],
                           "val": [],
@@ -283,9 +287,11 @@ def trainer(model: SBERTPredictor,
                     val_epoch_loss += val_loss.item()
                     val_epoch_acc += val_acc.item()
 
-            loss_stats['train'].append(train_epoch_loss / len(train_dataloader))
+            loss_stats['train'].append(
+                train_epoch_loss / len(train_dataloader))
             loss_stats['val'].append(val_epoch_loss / len(val_dataloader))
-            accuracy_stats['train'].append(train_epoch_acc / len(train_dataloader))
+            accuracy_stats['train'].append(
+                train_epoch_acc / len(train_dataloader))
             accuracy_stats['val'].append(val_epoch_acc / len(val_dataloader))
             print(f"Epoch {e+0:03}: | Train Loss: {train_epoch_loss/len(train_dataloader):.5f} \
                 | Val Loss: {val_epoch_loss / len(val_dataloader):.5f} \
@@ -337,7 +343,10 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
                                    pooling_mode_max_tokens=False)
     # generating biobert sentence embeddings (mean pooling of sentence
     # embedding vectors)
-    sbert_model = SBERTPredictor(word_embedding_model, pooling_model, logistic_model=logistic_model)
+    sbert_model = SBERTPredictor(
+        word_embedding_model,
+        pooling_model,
+        logistic_model=logistic_model)
     return sbert_model, tokenizer
 
 
@@ -367,7 +376,7 @@ def train_sbert_model(sbert_model,
                       num_epochs: int = 1,
                       learning_rate: float = 1e-7,
                       embedding_epochs: int = None,
-                      enable_class_weights: bool = True
+                      enable_class_weights: bool = True,
                       ):
     """Train SBERT on any NLI dataset.
 
@@ -492,7 +501,13 @@ def save_sbert_model(model: SBERTPredictor,
     if not os.path.exists(transformer_dir):
         os.makedirs(transformer_dir)
 
-    pickle.dump(model, open(os.path.join(transformer_dir, 'sigmoid.pickle'), "wb"))
+    pickle.dump(
+        model,
+        open(
+            os.path.join(
+                transformer_dir,
+                'sigmoid.pickle'),
+            "wb"))
 
 
 def load_sbert_model(transformer_dir: str = 'output/sbert_model',
@@ -504,5 +519,10 @@ def load_sbert_model(transformer_dir: str = 'output/sbert_model',
     :return: SBERT model stored at given location
     :rtype: SBERTPredictor
     """
-    sbert_model = pickle.load(open(os.path.join(transformer_dir, file_name), "rb"))
+    sbert_model = pickle.load(
+        open(
+            os.path.join(
+                transformer_dir,
+                file_name),
+            "rb"))
     return sbert_model
