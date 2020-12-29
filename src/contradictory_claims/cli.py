@@ -263,8 +263,8 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
         ## eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
         ## active_sheet = "All_phase2"
         eval_data_path = \
-            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
-        eval_data = read_data_from_excel(eval_data_path, active_sheet="Eval")
+            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
+        eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)
@@ -280,8 +280,8 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
         ## eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
         ## active_sheet = "All_phase2"
         eval_data_path = \
-            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
-        eval_data = read_data_from_excel(eval_data_path, active_sheet="Eval")
+            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
+        eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
 
         # Make predictions using trained model
         eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
