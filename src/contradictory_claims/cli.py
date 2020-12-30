@@ -28,7 +28,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.command()
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--output_folder', 'output_dir')
-#@click.option('--roberta/--no-roberta', 'roberta', default=True)
+# @click.option('--roberta/--no-roberta', 'roberta', default=True)
 @click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
 @click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
