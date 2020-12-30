@@ -28,8 +28,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.command()
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--output_folder', 'output_dir')
-# @click.option('--roberta/--no-roberta', 'roberta', default=True)
-@click.option('--bluebert-train/--bluebert-no-train', 'bluebert_train', default=False)
+@click.option('--roberta/--no-roberta', 'roberta', default=True)
+@click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
 @click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
 @click.option('--mednli/--no-mednli', 'use_mednli', default=False)
@@ -45,7 +45,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, bluebert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
+def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, bluebert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -157,104 +157,106 @@ def main(train, output_dir, bluebert_train, bluebert_model_path, use_multinli, u
     # Add paper publish time and title info
     ## claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
-    if train:
-        # Load BERT train and test data
-        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
-        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
-        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
-        ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-        ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
-        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
-        drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+    if roberta:
+        if train:
+            # Load BERT train and test data
+            multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
+                load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
+            med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
+                load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
+            man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
+                load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
+            ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+            ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
+            cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+                load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
+            drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
-        # ALLOW CUSTOM VERSIONS OF TRAINING!
-        # use_multinli, use_mednli, use_mancon, use_roamdev, learning_rate, batch_size, epochs, class_weights, aux_input)
+            # ALLOW CUSTOM VERSIONS OF TRAINING!
+            # use_multinli, use_mednli, use_mancon, use_roamdev, learning_rate, batch_size, epochs, class_weights, aux_input)
 
-        # Train model
-        trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
-                                                   multi_nli_test_x, multi_nli_test_y,
-                                                   med_nli_train_x, med_nli_train_y,
-                                                   med_nli_test_x, med_nli_test_y,
-                                                   man_con_train_x, man_con_train_y,
-                                                   man_con_test_x, man_con_test_y,
-                                                   cord_train_x, cord_train_y,
-                                                   cord_test_x, cord_test_y,
-                                                   drug_names, virus_names,
-                                                   model_name=model_name,
-                                                   use_multi_nli=use_multinli,
-                                                   use_med_nli=use_mednli,
-                                                   use_man_con=use_mancon,
-                                                   use_cord=use_roamdev,
-                                                   epochs=epochs,
-                                                   batch_size=batch_size,  # class_weights, aux_input,
-                                                   learning_rate=learning_rate,
-                                                   multi_class=multi_class)
+            # Train model
+            trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
+                                                       multi_nli_test_x, multi_nli_test_y,
+                                                       med_nli_train_x, med_nli_train_y,
+                                                       med_nli_test_x, med_nli_test_y,
+                                                       man_con_train_x, man_con_train_y,
+                                                       man_con_test_x, man_con_test_y,
+                                                       cord_train_x, cord_train_y,
+                                                       cord_test_x, cord_test_y,
+                                                       drug_names, virus_names,
+                                                       model_name=model_name,
+                                                       use_multi_nli=use_multinli,
+                                                       use_med_nli=use_mednli,
+                                                       use_man_con=use_mancon,
+                                                       use_cord=use_roamdev,
+                                                       epochs=epochs,
+                                                       batch_size=batch_size,  # class_weights, aux_input,
+                                                       learning_rate=learning_rate,
+                                                       multi_class=multi_class)
 
-        # Save model
-        #out_dir = 'output/working/biomed_roberta_base/'
-        out_dir = output_dir
-        save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
-        shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
+            # Save model
+            #out_dir = 'output/working/biomed_roberta_base/'
+            out_dir = output_dir
+            save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
+            shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
 
-        # Save model train history
-        out_train_hist_dir = os.path.join(trained_model_out_dir, 'train_history.txt')
-        with open(out_train_hist_dir, 'w') as f:
-            for item in train_history:
-                f.write(str(item.history) + "\n")
+            # Save model train history
+            out_train_hist_dir = os.path.join(trained_model_out_dir, 'train_history.txt')
+            with open(out_train_hist_dir, 'w') as f:
+                for item in train_history:
+                    f.write(str(item.history) + "\n")
 
-    else:
-        transformer_dir = os.path.join(root_dir, trained_model_out_dir)
-        pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
-        trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
+        else:
+            transformer_dir = os.path.join(root_dir, trained_model_out_dir)
+            pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
+            trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
 
-    if bluebert_train:
-        # Load BERT train and test data
-        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
-        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
-        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
-        ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-        ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
-        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
-        drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+    if bluebert:
+        if train:
+            # Load BERT train and test data
+            multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
+                load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
+            med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
+                load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
+            man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
+                load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
+            ## cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+            ##     load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
+            cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+                load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
+            drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
-        # Train model
-        bluebert_trained_model, bluebert_train_hist,\
-            device = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
-                                                 multi_nli_test_x, multi_nli_test_y,
-                                                 med_nli_train_x, med_nli_train_y,
-                                                 med_nli_test_x, med_nli_test_y,
-                                                 man_con_train_x, man_con_train_y,
-                                                 man_con_test_x, man_con_test_y,
-                                                 cord_train_x, cord_train_y,
-                                                 cord_test_x, cord_test_y,
-                                                 bluebert_model_path,
-                                                 use_multinli, use_mednli,
-                                                 use_mancon, use_roamdev,
-                                                 learning_rate, batch_size,
-                                                 epochs,  # class_weights, aux_input,
-                                                 multi_class=multi_class)
-        # Save model
-        bluebert_save_model(bluebert_trained_model)
+            # Train model
+            bluebert_trained_model, bluebert_train_hist,\
+                device = bluebert_create_train_model(multi_nli_train_x, multi_nli_train_y,
+                                                     multi_nli_test_x, multi_nli_test_y,
+                                                     med_nli_train_x, med_nli_train_y,
+                                                     med_nli_test_x, med_nli_test_y,
+                                                     man_con_train_x, man_con_train_y,
+                                                     man_con_test_x, man_con_test_y,
+                                                     cord_train_x, cord_train_y,
+                                                     cord_test_x, cord_test_y,
+                                                     bluebert_model_path,
+                                                     use_multinli, use_mednli,
+                                                     use_mancon, use_roamdev,
+                                                     learning_rate, batch_size,
+                                                     epochs,  # class_weights, aux_input,
+                                                     multi_class=multi_class)
+            # Save model
+            bluebert_save_model(bluebert_trained_model)
 
-        # Save model train history
-        out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
-        with open(out_train_hist_dir, 'w') as f:
-            for item in bluebert_train_hist:
-                f.write(str(item) + "\n")
+            # Save model train history
+            out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
+            with open(out_train_hist_dir, 'w') as f:
+                for item in bluebert_train_hist:
+                    f.write(str(item) + "\n")
 
-    else:
-        pass
-        ## bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
+        else:
+            pass
+            ## bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
 
     if report:
         eval_data_dir = os.path.join(root_dir, "input")
