@@ -99,7 +99,7 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli
     ## cord19_training_data_path = \
     ##    os.path.join(root_dir, 'input/cord-training/Coronawhy-Contra-Claims-Scaling-v2-annotated-2020-10-21.xlsx')
     cord19_training_data_path = \
-        os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split.xlsx')
+        os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
 
     # Other input paths
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
@@ -242,11 +242,14 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli
                                                      bluebert_model_path,
                                                      use_multinli, use_mednli,
                                                      use_mancon, use_roamdev,
-                                                     learning_rate, batch_size,
-                                                     epochs,  # class_weights, aux_input,
+                                                     ##learning_rate, #FIGURE THIS OUT
+                                                     batch_size=batch_size,
+                                                     epochs=epochs,  # class_weights, aux_input,
                                                      multi_class=multi_class)
             # Save model
             bluebert_save_model(bluebert_trained_model)
+            if not os.path.exists(bluebert_out_dir):
+                os.makedirs(bluebert_out_dir)
 
             # Save model train history
             out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
@@ -293,8 +296,14 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli
 
         # Now create the report
         out_report_dir = os.path.join(bluebert_out_dir, 'reports')
+        if not os.path.exists(out_report_dir):
+            os.makedirs(out_report_dir)
         create_report(eval_data, model_id=bluebert_model_id, out_report_dir=out_report_dir, out_plot_dir=out_report_dir)
 
 
 if __name__ == '__main__':
     main()
+
+
+
+## python -m contradictory_claims --train --no-roberta --bluebert --bluebert-report --output_folder output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001 --learning_rate 0.000001 --epochs 1 --batch_size 2 --no-multinli --roamdev

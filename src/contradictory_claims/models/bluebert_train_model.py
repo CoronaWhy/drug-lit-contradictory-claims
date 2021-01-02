@@ -238,14 +238,14 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 cord_test_x: np.ndarray,
                                 cord_test_y: np.ndarray,
                                 bluebert_pretrained_path: str,
-                                multi_class: bool = True,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
                                 use_cord: bool = True,
                                 epochs: int = 3,
                                 batch_size: int = 32,
-                                criterion: str = None):
+                                criterion: str = None,
+                                multi_class: bool = True,):
     """
     Create and train the Bluebert Transformer model.
 
