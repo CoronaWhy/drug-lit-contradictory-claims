@@ -65,7 +65,8 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli
     now = datetime.datetime.now()
     transformer_dir = os.path.join('output/transformer', model_id)
     ri = randrange(1000)
-    trained_model_out_dir = os.path.join(transformer_dir, f"{now.day}-{now.month}-{now.year}_{now.hour}_{now.minute}_RI{ri}")
+    ###trained_model_out_dir = os.path.join(transformer_dir, f"{now.day}-{now.month}-{now.year}_{now.hour}_{now.minute}_RI{ri}")
+    trained_model_out_dir = output_dir
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
