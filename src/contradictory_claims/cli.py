@@ -138,15 +138,16 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
     if train:
         # Load BERT train and test data
-        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
-        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
-        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
-        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names)
+        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
+            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class,
+                         drug_names=drug_names)
+        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
+            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class, drug_names=drug_names)
+        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class, drug_names=drug_names)
 
         # Train model
         trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
@@ -181,15 +182,16 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
 
     if bluebert_train:
         # Load BERT train and test data
-        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
-        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
-        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
-        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+        multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names)
+        med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
+            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class,
+			drug_names=drug_names)
+        man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
+            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class, drug_names=drug_names)
+        cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
+            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class, drug_names=drug_names)
 
         # Train model
         bluebert_trained_model, bluebert_train_hist,\
