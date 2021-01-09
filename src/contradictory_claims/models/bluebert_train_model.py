@@ -40,7 +40,7 @@ class ContraDataset(Dataset):
             # If len > max_len, truncate text upto max_len-8 characters and append the 8-character auxillary input
             texts = [text[:max_len - 8] + text[-8:] if len(text) > max_len else text for text in texts]
 
-        texts = [text for text in texts if str(text) != 'nan']  # An annoying thing to catch... remove nans.
+        # texts = [text for text in texts if str(text) != 'nan']  # An annoying thing to catch... remove nans.
         enc_di = self.tokenizer.batch_encode_plus(texts,
                                                   return_token_type_ids=False,
                                                   padding='max_length',
@@ -194,6 +194,10 @@ def bluebert_train_model(model,
 
             claim = batch[0].to(device)
             mask = batch[1].to(device)
+
+            print(f"Len claims {len(claim)}")
+            print(f"Len mask {len(mask)}")
+
             if criterion == 'crossentropy':
                 label = batch[2].to(device=device, dtype=torch.int64)
                 label = torch.max(label, 1)[1]

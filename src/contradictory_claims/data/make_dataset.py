@@ -21,8 +21,9 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
         and data is prepared for binary classification.
     :return: MultiNLI sentence pairs and labels for training and test sets, respectively
     """
-    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False)
-    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False)
+    # If not drop NaNs in sentences now, could lead to problems when encoding
+    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
+    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
 
     # Map labels to numerical (categorical) values
     multinli_train_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
