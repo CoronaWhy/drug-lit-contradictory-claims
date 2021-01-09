@@ -40,6 +40,7 @@ class ContraDataset(Dataset):
             # If len > max_len, truncate text upto max_len-8 characters and append the 8-character auxillary input
             texts = [text[:max_len - 8] + text[-8:] if len(text) > max_len else text for text in texts]
 
+        texts = [text for text in texts if str(text) != 'nan']  # An annoying thing to catch... remove nans.
         enc_di = self.tokenizer.batch_encode_plus(texts,
                                                   return_token_type_ids=False,
                                                   padding='max_length',
