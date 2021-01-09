@@ -195,9 +195,6 @@ def bluebert_train_model(model,
             claim = batch[0].to(device)
             mask = batch[1].to(device)
 
-            print(f"Len claims {len(claim)}")
-            print(f"Len mask {len(mask)}")
-
             if criterion == 'crossentropy':
                 label = batch[2].to(device=device, dtype=torch.int64)
                 label = torch.max(label, 1)[1]
