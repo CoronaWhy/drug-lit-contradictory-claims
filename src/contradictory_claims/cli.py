@@ -10,41 +10,41 @@ from random import randrange
 import click
 import pandas as pd
 
-from .models.bluebert_evaluate_model import bluebert_make_predictions
-from .data.make_dataset import \
+from models.bluebert_evaluate_model import bluebert_make_predictions
+from data.make_dataset import \
     load_cord_pairs, load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
     load_med_nli, load_multi_nli
-from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
+from data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     extract_section_from_text, filter_metadata_for_covid19,\
     filter_section_with_drugs, merge_section_text
-from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
+from data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
-from .models.bluebert_train_model import bluebert_create_train_model,\
+from models.bluebert_train_model import bluebert_create_train_model,\
     bluebert_load_model, bluebert_save_model
-from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
-from .models.train_model import load_model, save_model, train_model
+from models.evaluate_model import create_report, make_predictions, read_data_from_excel
+from models.train_model import load_model, save_model, train_model
 
 
-@click.command()
-@click.option('--train/--no-train', 'train', default=False)
-@click.option('--output_folder', 'output_dir')
-@click.option('--roberta/--no-roberta', 'roberta', default=True)
-@click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
-@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
-@click.option('--multinli/--no-multinli', 'use_multinli', default=True)
-@click.option('--mednli/--no-mednli', 'use_mednli', default=False)
-@click.option('--mancon/--no-mancon', 'use_mancon', default=False)
-@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
-@click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
-@click.option('--report/--no-report', 'report', default=False)
-@click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
-@click.option('--multi_class/--binary_class', 'multi_class', default=True)
-@click.option('--cord-version', 'cord_version', default='2020-08-10')
-@click.option('--learning_rate', 'learning_rate', default=1e-6)
-@click.option('--batch_size', 'batch_size', default=2)
-@click.option('--epochs', 'epochs', default=3)
-@click.option('--class_weights', 'class_weights', default=False)
-@click.option('--aux_input', 'aux_input', default=False)
+#@click.command()
+#@click.option('--train/--no-train', 'train', default=False)
+#@click.option('--output_folder', 'output_dir')
+#@click.option('--roberta/--no-roberta', 'roberta', default=True)
+#@click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
+#@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
+#@click.option('--multinli/--no-multinli', 'use_multinli', default=True)
+#@click.option('--mednli/--no-mednli', 'use_mednli', default=False)
+#@click.option('--mancon/--no-mancon', 'use_mancon', default=False)
+#@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
+#@click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
+#@click.option('--report/--no-report', 'report', default=False)
+#@click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
+#@click.option('--multi_class/--binary_class', 'multi_class', default=True)
+#@click.option('--cord-version', 'cord_version', default='2020-08-10')
+#@click.option('--learning_rate', 'learning_rate', default=1e-6)
+#@click.option('--batch_size', 'batch_size', default=2)
+#@click.option('--epochs', 'epochs', default=3)
+#@click.option('--class_weights', 'class_weights', default=False)
+#@click.option('--aux_input', 'aux_input', default=False)
 def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli, use_mednli, use_mancon, use_roamdev, extract_claims, report, bluebert_report, multi_class, cord_version, learning_rate, batch_size, epochs, class_weights, aux_input):
     """Run main function."""
     # Model parameters
@@ -303,8 +303,25 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, use_multinli
 
 
 if __name__ == '__main__':
-    main()
-
-
+    #main()
+    main(train=True,
+         output_dir="output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001",
+         roberta=False,
+         bluebert=True,
+         bluebert_model_path="ttumyche/bluebert",
+         use_multinli=True,
+         use_mednli=False,
+         use_mancon=False,
+         use_roamdev=True,
+         extract_claims=False,
+         report=False,
+         bluebert_report=True,
+         multi_class=True,
+         learning_rate=0.00001,
+         batch_size=2,
+         epochs=1,
+         cord_version='2020-08-10',
+         class_weights=False,
+         aux_input=False)
 
 ## python -m contradictory_claims --train --no-roberta --bluebert --bluebert-report --output_folder output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001 --learning_rate 0.000001 --epochs 1 --batch_size 2 --no-multinli --roamdev
