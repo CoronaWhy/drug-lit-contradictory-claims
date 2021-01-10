@@ -173,7 +173,7 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
-            load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class)
+            load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Dev', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
         if roberta:
