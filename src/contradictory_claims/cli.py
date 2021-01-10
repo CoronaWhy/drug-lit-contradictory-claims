@@ -180,6 +180,11 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
     # Add paper publish time and title info
     ## claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
+    # For evaluaitng the models
+    eval_data_path = \
+        os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
+    eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
+
     if train:
         # Load BERT train and test data
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
@@ -234,6 +239,19 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                 jsonfile.write(myJSON)
                 print("Written config file for this run.")
 
+            if report:
+                # Make predictions using trained model
+                eval_data = make_predictions(df=eval_data, model=trained_model,
+                                             model_name="allenai/biomed_roberta_base",
+                                             multi_class=multi_class)
+
+                # Now create the report
+                out_report_dir = os.path.join(biobert_out_dir, 'reports')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+                create_report(eval_data, model_id="biomed_roberta", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
+
         if bluebert:
             # Train model
             bluebert_trained_model, bluebert_train_hist, \
@@ -269,6 +287,20 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
             with open(os.path.join(bluebert_out_dir, "config.json"), "w") as jsonfile:
                 jsonfile.write(myJSON)
                 print("Written config file for this run.")
+
+            if report:
+                # Make predictions using trained model
+                eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
+                                                      model=bluebert_trained_model, device=device,
+                                                      model_name='bluebert',
+                                                      multi_class=multi_class)
+
+                # Now create the report
+                out_report_dir = os.path.join(bluebert_out_dir, 'reports')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+                create_report(eval_data, model_id="bluebert", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
 
         if sbert:
             # note uses biobert model as base, so model_name is correct
@@ -311,6 +343,17 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                 jsonfile.write(myJSON)
                 print("Written config file for this run.")
 
+            if report:
+                eval_data = make_sbert_predictions(df=eval_data, model=sbert_model,
+                                                   model_name="allenai/biomed_roberta_base")
+
+                # Now create the report
+                out_report_dir = os.path.join(sbert_out_dir, 'reports')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+
+                create_report(eval_data, model_id="biobert_sbert", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
     else:  # if not train
         # NOTE: Need to revisit all of this
         if biobert:
@@ -325,48 +368,6 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
             pass
             # sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
             # sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
-
-
-    if report:
-        # eval_data_dir = os.path.join(root_dir, "input")
-        # eval_data_path = os.path.join(eval_data_dir, "drug_individual_claims_similarity_annotated.xlsx")
-        # active_sheet = "drug_individual_claims_similari"
-        ## eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
-        ## active_sheet = "All_phase2"
-        eval_data_path = \
-            os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
-        eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
-
-        if biobert:
-            # Make predictions using trained model
-            eval_data = make_predictions(df=eval_data, model=trained_model, model_name="allenai/biomed_roberta_base",
-                                         multi_class=multi_class)
-
-            # Now create the report
-            out_report_dir = os.path.join(trained_model_out_dir)
-            create_report(eval_data, model_id="biomed_roberta", out_report_dir=out_report_dir,
-                          out_plot_dir=trained_model_out_dir)
-
-        if bluebert:
-            # Make predictions using trained model
-            eval_data = bluebert_make_predictions(df=eval_data, bluebert_pretrained_path=bluebert_model_path,
-                                                  model=bluebert_trained_model, device=device,
-                                                  model_name='bluebert',
-                                                  multi_class=multi_class)
-
-            # Now create the report
-            out_report_dir = os.path.join(bluebert_out_dir, 'reports')
-            if not os.path.exists(out_report_dir):
-                os.makedirs(out_report_dir)
-            create_report(eval_data, model_id="bluebert", out_report_dir=out_report_dir,
-                          out_plot_dir=out_report_dir)
-
-        if sbert:
-            eval_data = make_sbert_predictions(df=eval_data, model=sbert_model,
-                                               model_name="allenai/biomed_roberta_base")
-            out_report_dir = os.path.join(sbert_trained_model_out_dir)
-            create_report(eval_data, model_id="biobert_sbert", out_report_dir=out_report_dir,
-                          out_plot_dir=sbert_trained_model_out_dir)
 
 
 if __name__ == '__main__':
