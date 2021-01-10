@@ -142,7 +142,10 @@ output
 slurm*
 submit_train.sh
 biobert*
+bluebert*
 wandb*
+generic.sh
+run_file.sh
 tests/models/test_output/
 
 # tests/data/resources/cord19/extracted/document_parses/
