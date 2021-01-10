@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import json
 import os
 import shutil
 from random import randrange
@@ -10,52 +11,49 @@ from random import randrange
 import click
 import pandas as pd
 
-from models.bluebert_evaluate_model import bluebert_make_predictions
-from data.make_dataset import \
+# CHANGE ALL TO RELATIVE IMPORTS!
+from .models.bluebert_evaluate_model import bluebert_make_predictions
+from .data.make_dataset import \
     load_cord_pairs, load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
     load_med_nli, load_multi_nli
-from data.preprocess_cord import clean_text, extract_json_to_dataframe,\
+from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     extract_section_from_text, filter_metadata_for_covid19,\
     filter_section_with_drugs, merge_section_text
-from data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
+from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
     split_papers_on_claim_presence, tokenize_section_text
-from models.bluebert_train_model import bluebert_create_train_model,\
+from .models.bluebert_train_model import bluebert_create_train_model,\
     bluebert_load_model, bluebert_save_model
 from .models.evaluate_model import create_report, make_predictions, make_sbert_predictions, read_data_from_excel
 from .models.sbert_models import build_sbert_model, load_sbert_model, save_sbert_model, train_sbert_model
 from .models.train_model import load_model, save_model, train_model
 
 
-#@click.command()
-#@click.option('--train/--no-train', 'train', default=False)
-#@click.option('--output_folder', 'output_dir')
-#@click.option('--roberta/--no-roberta', 'roberta', default=True)
-#@click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
-#@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
-#@click.option('--sbert'/--no-sbert, 'sbert', default=False)
-#@click.option('--sbert-logistic-regression/--no-sbert-logistic-regression', 'logistic_model', default=True)
-#@click.option('--multinli/--no-multinli', 'use_multinli', default=True)
-#@click.option('--mednli/--no-mednli', 'use_mednli', default=False)
-#@click.option('--mancon/--no-mancon', 'use_mancon', default=False)
-#@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
-#@click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
-#@click.option('--report/--no-report', 'report', default=True)
-#@click.option('--multi_class/--binary_class', 'multi_class', default=True)
-#@click.option('--cord-version', 'cord_version', default='2020-08-10')
-#@click.option('--learning_rate', 'learning_rate', default=1e-6)
-#@click.option('--batch_size', 'batch_size', default=2)
-#@click.option('--epochs', 'epochs', default=3)
-#@click.option('--class_weights', 'class_weights', default=False)
-#@click.option('--aux_input', 'aux_input', default=False)
-def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, use_mednli,
+@click.command()
+@click.option('--train/--no-train', 'train', default=False)
+@click.option('--biobert/--no-biobert', 'biobert', default=True)
+@click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
+@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
+@click.option('--sbert/--no-sbert', 'sbert', default=False)
+@click.option('--sbert-logistic-regression/--no-sbert-logistic-regression', 'logistic_model', default=True)
+@click.option('--multinli/--no-multinli', 'use_multinli', default=True)
+@click.option('--mednli/--no-mednli', 'use_mednli', default=False)
+@click.option('--mancon/--no-mancon', 'use_mancon', default=False)
+@click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
+@click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
+@click.option('--report/--no-report', 'report', default=True)
+@click.option('--multi_class/--binary_class', 'multi_class', default=True)
+@click.option('--cord-version', 'cord_version', default='2020-08-10')
+@click.option('--learning_rate', 'learning_rate', default=1e-6)
+@click.option('--batch_size', 'batch_size', default=2)
+@click.option('--epochs', 'epochs', default=3)
+@click.option('--class_weights', 'class_weights', default=False)
+@click.option('--aux_input', 'aux_input', default=False)
+def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, use_mednli,
          use_mancon, use_roamdev, extract_claims, report, multi_class, cord_version, learning_rate,
          batch_size, epochs, class_weights, aux_input):
 
     """Run main function."""
     # Model parameters
-    model_name = "allenai/biomed_roberta_base"
-    model_id = "biomed_roberta"
-    bluebert_model_id = "bluebert"
     # Find path of bluebert cloned repo containing pretrained model
     # if bluebert_train:
     #     for root, dirs, _files in os.walk("."):
@@ -64,15 +62,33 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
     #                 bluebert_repo_path = os.path.abspath(os.path.join(root, name))
     #                 break
 
+    config = {
+        "train" : train,
+        "biobert" : biobert,
+        "bluebert" : bluebert,
+        "bluebert_model_path" : bluebert_model_path,
+        "sbert" : sbert,
+        "sbert_logistic_regression" : logistic_model,
+        "use_multinli" : use_multinli,
+        "use_mednli" : use_mednli,
+        "use_mancon" : use_mancon,
+        "use_roamdev" : use_roamdev,
+        "extract_claims" : extract_claims,
+        "report" : report,
+        "multi_class" : multi_class,
+        "cord_version" : cord_version,
+        "learning_rate" : learning_rate,
+        "batch_size" : batch_size,
+        "epochs" : epochs,
+        "class_weights" : class_weights,
+        "aux_input" : aux_input
+    }
+
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
-    sbert_trained_model_out_dir = 'output/sbert_model'
-    bluebert_out_dir = 'output/transformer/bluebert'
     now = datetime.datetime.now()
-    transformer_dir = os.path.join('output/transformer', model_id)
-    ri = randrange(1000)
-    ###trained_model_out_dir = os.path.join(transformer_dir, f"{now.day}-{now.month}-{now.year}_{now.hour}_{now.minute}_RI{ri}")
-    trained_model_out_dir = output_dir
+    ri = str(randrange(1000))
+    uid = f"{now}_RI{ri}"
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
@@ -176,7 +192,7 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
             load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Dev', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
-        if roberta:
+        if biobert:
             # Train model
             trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
                                                        multi_nli_test_x, multi_nli_test_y,
@@ -187,7 +203,7 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
                                                        cord_train_x, cord_train_y,
                                                        cord_test_x, cord_test_y,
                                                        drug_names, virus_names,
-                                                       model_name=model_name,
+                                                       model_name="allenai/biomed_roberta_base",
                                                        use_multi_nli=use_multinli,
                                                        use_med_nli=use_mednli,
                                                        use_man_con=use_mancon,
@@ -200,16 +216,23 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
             # Save model
             # out_dir = 'output/working/biomed_roberta_base/'
             out_dir = output_dir
-            save_model(trained_model, timed_dir_name=False, transformer_dir=trained_model_out_dir)
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
+            biobert_out_dir = f"output/trained_biobert/biobert_{uid}"
+            if not os.path.exists(biobert_out_dir):
+                os.makedirs(biobert_out_dir)
+            save_model(trained_model, timed_dir_name=False, transformer_dir=biobert_out_dir)
             shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
 
             # Save model train history
-            out_train_hist_dir = os.path.join(trained_model_out_dir, 'train_history.txt')
+            out_train_hist_dir = os.path.join(biobert_out_dir, 'train_history.txt')
             with open(out_train_hist_dir, 'w') as f:
                 for item in train_history:
                     f.write(str(item.history) + "\n")
+
+            # Save config
+            myJSON = json.dumps(config)
+            with open(os.path.join(biobert_out_dir, "config.json"), "w") as jsonfile:
+                jsonfile.write(myJSON)
+                print("Written config file for this run.")
 
         if bluebert:
             # Train model
@@ -230,9 +253,10 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
                                                  epochs=epochs,  # class_weights, aux_input,
                                                  multi_class=multi_class)
             # Save model
-            bluebert_save_model(bluebert_trained_model)
+            bluebert_out_dir = f"output/trained_bluebert/bluebert_{uid}"
             if not os.path.exists(bluebert_out_dir):
                 os.makedirs(bluebert_out_dir)
+            bluebert_save_model(bluebert_trained_model, bluebert_save_path=bluebert_out_dir)
 
             # Save model train history
             out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
@@ -240,8 +264,15 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
                 for item in bluebert_train_hist:
                     f.write(str(item) + "\n")
 
+            # Save config
+            myJSON = json.dumps(config)
+            with open(os.path.join(bluebert_out_dir, "config.json"), "w") as jsonfile:
+                jsonfile.write(myJSON)
+                print("Written config file for this run.")
+
         if sbert:
-            sbert_model, tokenizer = build_sbert_model(model_name, logistic_model=logistic_model)
+            # note uses biobert model as base, so model_name is correct
+            sbert_model, tokenizer = build_sbert_model("allenai/biomed_roberta_base", logistic_model=logistic_model)
             sbert_model = train_sbert_model(sbert_model,
                                             tokenizer=tokenizer,
                                             use_man_con=use_mancon,
@@ -267,19 +298,33 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
                                             batch_size=batch_size,
                                             num_epochs=epochs)
                                             # MISSING LEARNING RATE
-            save_sbert_model(model=sbert_model, transformer_dir=sbert_trained_model_out_dir)
+
+            # Save model
+            sbert_out_dir = f"output/trained_sbert/sbert_{uid}"
+            if not os.path.exists(sbert_out_dir):
+                os.makedirs(sbert_out_dir)
+            save_sbert_model(model=sbert_model, transformer_dir=sbert_out_dir)
+
+            # Save config
+            myJSON = json.dumps(config)
+            with open(os.path.join(sbert_out_dir, "config.json"), "w") as jsonfile:
+                jsonfile.write(myJSON)
+                print("Written config file for this run.")
 
     else:  # if not train
-        if roberta:
-            transformer_dir = os.path.join(root_dir, trained_model_out_dir)
-            pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
-            trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
+        # NOTE: Need to revisit all of this
+        if biobert:
+            pass
+            # transformer_dir = os.path.join(root_dir, trained_model_out_dir)
+            # pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
+            # trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
         if bluebert:
             pass
-            ## bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
+            # bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
         if sbert:
-            sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
-            sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
+            pass
+            # sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
+            # sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
 
 
     if report:
@@ -292,14 +337,14 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
             os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
         eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
 
-        if roberta:
+        if biobert:
             # Make predictions using trained model
-            eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name,
+            eval_data = make_predictions(df=eval_data, model=trained_model, model_name="allenai/biomed_roberta_base",
                                          multi_class=multi_class)
 
             # Now create the report
             out_report_dir = os.path.join(trained_model_out_dir)
-            create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir,
+            create_report(eval_data, model_id="biomed_roberta", out_report_dir=out_report_dir,
                           out_plot_dir=trained_model_out_dir)
 
         if bluebert:
@@ -313,36 +358,37 @@ def main(train, output_dir, roberta, bluebert, bluebert_model_path, sbert, logis
             out_report_dir = os.path.join(bluebert_out_dir, 'reports')
             if not os.path.exists(out_report_dir):
                 os.makedirs(out_report_dir)
-            create_report(eval_data, model_id=bluebert_model_id, out_report_dir=out_report_dir,
+            create_report(eval_data, model_id="bluebert", out_report_dir=out_report_dir,
                           out_plot_dir=out_report_dir)
 
         if sbert:
-            eval_data = make_sbert_predictions(df=eval_data, model=sbert_model, model_name=model_name)
+            eval_data = make_sbert_predictions(df=eval_data, model=sbert_model,
+                                               model_name="allenai/biomed_roberta_base")
             out_report_dir = os.path.join(sbert_trained_model_out_dir)
-            create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir,
+            create_report(eval_data, model_id="biobert_sbert", out_report_dir=out_report_dir,
                           out_plot_dir=sbert_trained_model_out_dir)
 
 
 if __name__ == '__main__':
-    #main()
-    main(train=True,
-         output_dir="output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001",
-         roberta=False,
-         bluebert=True,
-         bluebert_model_path="ttumyche/bluebert",
-         use_multinli=True,
-         use_mednli=False,
-         use_mancon=False,
-         use_roamdev=True,
-         extract_claims=False,
-         report=False,
-         bluebert_report=True,
-         multi_class=True,
-         learning_rate=0.00001,
-         batch_size=2,
-         epochs=1,
-         cord_version='2020-08-10',
-         class_weights=False,
-         aux_input=False)
+    main()
+    #main(train=True,
+    #     output_dir="output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001",
+    #     roberta=False,
+    #     bluebert=True,
+    #     bluebert_model_path="ttumyche/bluebert",
+    #     use_multinli=False,
+    #     use_mednli=False,
+    #     use_mancon=False,
+    #     use_roamdev=True,
+    #     extract_claims=False,
+    #     report=False,
+    #     bluebert_report=True,
+    #     multi_class=True,
+    #     learning_rate=0.00001,
+    #     batch_size=2,
+    #     epochs=1,
+    #     cord_version='2020-08-10',
+    #     class_weights=False,
+    #     aux_input=False)
 
-## python -m contradictory_claims --train --no-roberta --bluebert --bluebert-report --output_folder output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001 --learning_rate 0.000001 --epochs 1 --batch_size 2 --no-multinli --roamdev
+## python -m contradictory_claims --train --no-roberta --bluebert --output_folder output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001 --learning_rate 0.000001 --epochs 1 --batch_size 2 --no-multinli --roamdev
