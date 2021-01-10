@@ -86,7 +86,7 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
-    now = datetime.datetime.now()
+    now = str(datetime.datetime.now()).replace(" ", "_")
     ri = str(randrange(1000))
     uid = f"{now}_RI{ri}"
 
@@ -344,6 +344,7 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                 print("Written config file for this run.")
 
             if report:
+                print(type(sbert_model))
                 eval_data = make_sbert_predictions(df=eval_data, model=sbert_model,
                                                    model_name="allenai/biomed_roberta_base")
 

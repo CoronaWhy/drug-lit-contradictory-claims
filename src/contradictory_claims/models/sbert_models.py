@@ -6,6 +6,7 @@ import math
 import os
 import pickle
 import shutil
+import ssl
 
 import numpy as np
 import torch
@@ -25,6 +26,7 @@ from .dataloader import ClassifierDataset, NLIDataReader, collate_fn, multi_acc
 from .dataloader import format_create
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class SBERTPredictor(SentenceTransformer):
     """SBERT Prediction class."""
@@ -314,7 +316,8 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
         model_name = "deepset/covid_bert_base"
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path
-        os.makedirs(model_save_path, exist_ok=True)
+        if not os.path.exists(model_save_path):
+            os.makedirs(model_save_path, exist_ok=True)
         wget.download(
             "https://cdn.huggingface.co/deepset/covid_bert_base/vocab.txt",
             out=f"{model_save_path}/")  # download the vocab file
@@ -322,7 +325,8 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
     else:
         model_name = "allenai/biomed_roberta_base"
         model_save_path = "biobert_path"
-        os.makedirs(model_save_path, exist_ok=True)
+        if not os.path.exists(model_save_path):
+            os.makedirs(model_save_path, exist_ok=True)
         wget.download(
             "https://cdn.huggingface.co/allenai/biomed_roberta_base/merges.txt",
             out=f"{model_save_path}/")
@@ -479,7 +483,7 @@ def train_sbert_model(sbert_model,
                 embedding_epochs=embedding_epochs,
                 enable_class_weights=enable_class_weights)
 
-    # return sbert_model
+    return sbert_model
 
 
 def save_sbert_model(model: SBERTPredictor,
