@@ -187,7 +187,7 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
             load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
             load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class,
-			drug_names=drug_names)
+                         drug_names=drug_names)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class, drug_names=drug_names)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \

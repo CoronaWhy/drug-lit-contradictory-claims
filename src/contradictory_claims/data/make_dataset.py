@@ -12,22 +12,22 @@ from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
 
-def replace_drug_with_spl_token(text: List[str], drug_names: List[str]):
+def replace_drug_with_spl_token(text: List[str], drug_names: List[str] = None):
     """
     Replace drug name with a special token.
-    
+
     :param text: list of input text containing drug name
     :param drug_names: list of drug names to replace
     :return: Text with all drug occurrances replaced by special token
     """
     text_out = text
     for drug in drug_names:
-        text_out = [str(t).replace(drug,"$drug$") for t in text_out]
-    
+        text_out = [str(t).replace(drug, "$drug$") for t in text_out]
+
     return text_out
 
 
-def load_multi_nli(train_path: str, test_path: str, drug_names: List[str], multi_class: bool = True,
+def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None, multi_class: bool = True,
                    repl_drug_with_spl_tkn: bool = False):
     """
     Load MultiNLI data for training.
@@ -99,7 +99,8 @@ def load_multi_nli(train_path: str, test_path: str, drug_names: List[str], multi
     return x_train, y_train, x_test, y_test
 
 
-def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: List[str], num_training_pairs_per_class: int = None,
+def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: List[str] = None,
+                 num_training_pairs_per_class: int = None,
                  multi_class: bool = True, repl_drug_with_spl_tkn: bool = False):
     """
     Load MedNLI data for training.
@@ -200,12 +201,14 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: Lis
 
 
 def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
-                                       drug_names: List[str],
+                                       drug_names: List[str] = None,
                                        multi_class: bool = True,  # noqa: D205,D400
                                        repl_drug_with_spl_tkn: bool = False):
     """
-    Load ManConCorpus data. NOTE: this data must be preprocessed as sentence pairs. This format is a TSV with four
-        columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
+    Load ManConCorpus data.
+
+    NOTE: This data must be preprocessed as sentence pairs. This format is a TSV with four
+    columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
 
     :param mancon_sent_pair_path: path to ManCon sentence pair file
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
@@ -224,7 +227,7 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + mancon_data.text_a + '[SEP]' + mancon_data.text_b, mancon_data['label'], test_size=0.2,
-        stratify = mancon_data['label'])
+        stratify=mancon_data['label'])
     if multi_class:
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(y_train_tmp)
@@ -284,7 +287,7 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     return drug_names, virus_names
 
 
-def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str], multi_class: bool = True,
+def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = None, multi_class: bool = True,
                     repl_drug_with_spl_tkn: bool = False):
     """
     Load CORD-19 annotated claim pairs for training.
@@ -308,7 +311,7 @@ def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str], mu
     # Insert the CLS and SEP tokens
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
-        stratify = cord_data['label'])
+        stratify=cord_data['label'])
     if multi_class:
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(y_train_tmp)
