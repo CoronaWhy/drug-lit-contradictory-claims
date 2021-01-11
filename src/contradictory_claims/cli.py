@@ -328,8 +328,8 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                             cord_test_x=cord_test_x,
                                             cord_test_y=cord_test_y,
                                             batch_size=batch_size,
-                                            num_epochs=epochs)
-                                            # MISSING LEARNING RATE
+                                            num_epochs=epochs,
+                                            learning_rate=learning_rate)
 
             # Save model
             sbert_out_dir = f"output/trained_sbert/sbert_{uid}"
