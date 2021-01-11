@@ -9,7 +9,7 @@ import click
 import pandas as pd
 
 from .bluebert_evaluate_model import bluebert_make_predictions
-from .data.make_dataset import \
+from .data.make_dataset import create_mancon_sent_pairs_from_xml,\
     load_cord_pairs, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     extract_section_from_text, filter_metadata_for_covid19,\
@@ -74,8 +74,12 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     mednli_dev_path = os.path.join(root_dir, 'input/mednli/mli_dev_v1.jsonl')
     mednli_test_path = os.path.join(root_dir, 'input/mednli/mli_test_v1.jsonl')
 
+    # ManConCorpus xml path
+    mancon_xml_path = os.path.join(root_dir, 'input/manconcorpus/ManConCorpus.xml')
+
     # ManConCorpus processed path
-    mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+    # mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+    mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_v2.tsv')
 
     # CORD-19 annotated training data path
     cord19_training_data_path = \
@@ -85,6 +89,9 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
     conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
+
+    # Create ManCon sentence pairs dataset
+    create_mancon_sent_pairs_from_xml(mancon_xml_path, mancon_sent_pairs)
 
     if extract:
         # Load and preprocess CORD-19 data

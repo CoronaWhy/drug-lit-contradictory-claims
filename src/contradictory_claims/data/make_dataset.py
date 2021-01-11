@@ -3,6 +3,8 @@
 # -*- coding: utf-8 -*-
 
 import json
+import xml.etree.ElementTree as ET  # TODO: Fix error # noqa: S405, N817
+from itertools import combinations
 from typing import List
 
 import numpy as np
@@ -198,6 +200,75 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: Lis
     x_test = np.array(x_test)
 
     return x_train, y_train, x_test, y_test
+
+
+def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
+    """
+    Create sentence pairs dataset from the original xml ManCon Corpus.
+
+    :param xml_path: path to xml corpus
+    :param save_path: path to save the sentence pairs dataset
+    """
+    xtree = ET.parse(xml_path)  # TODO: Fix error # noqa: S314
+    xroot = xtree.getroot()
+
+    manconcorpus_data = pd.DataFrame(columns=['claim', 'assertion', 'question'])
+
+    for node in xroot:
+        for claim in node.findall('CLAIM'):
+            manconcorpus_data = manconcorpus_data.append({'claim': claim.text,
+                                                          'assertion': claim.attrib.get('ASSERTION'),
+                                                          'question': claim.attrib.get('QUESTION')},
+                                                         ignore_index=True)
+    # print(len(manconcorpus_data))
+
+    questions = list(set(manconcorpus_data.question))
+    con = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+    ent = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+    neu = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+
+    for q in questions:
+        claim_yes = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q)
+                                                       & (manconcorpus_data.assertion == 'YS'), 'claim'])  # noqa: W503
+        claim_no = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q)
+                                                      & (manconcorpus_data.assertion == 'NO'), 'claim'])  # noqa: W503
+        temp = claim_yes.assign(key=1).merge(claim_no.assign(key=1), on='key').drop('key', 1)
+        temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
+        con = con.append(temp1)
+        con['label'] = 1
+        con.drop_duplicates(inplace=True)
+
+        for i, j in list(combinations(claim_yes.index, 2)):
+            ent = ent.append({'text_a': claim_yes.claim[i],
+                              'text_b': claim_yes.claim[j],
+                              'label': 0},
+                             ignore_index=True)
+
+        for i, j in list(combinations(claim_no.index, 2)):
+            ent = ent.append({'text_a': claim_no.claim[i],
+                              'text_b': claim_no.claim[j],
+                              'label': 0},
+                             ignore_index=True)
+
+        claim1 = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q), 'claim'])
+        claim2 = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question != q), 'claim'])
+        temp = claim1.assign(key=1).merge(claim2.assign(key=1), on='key').drop('key', 1)
+        temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
+        neu = neu.append(temp1)
+        neu['label'] = 2
+        neu.drop_duplicates(inplace=True)
+
+    transfer_data = pd.concat([con, ent, neu]).reset_index(drop=True)
+    transfer_data['label'] = transfer_data.label.astype('float')
+    transfer_data['guid'] = transfer_data.index
+    # print(len(con))
+    # print(len(ent))
+    # print(len(neu))
+    # print(len(transfer_data))
+
+    transfer_data.to_csv(save_path, sep='\t', index=False)
+
+    return
 
 
 def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
