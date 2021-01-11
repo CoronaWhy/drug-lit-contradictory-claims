@@ -235,19 +235,19 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
         temp = claim_yes.assign(key=1).merge(claim_no.assign(key=1), on='key').drop('key', 1)
         temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
         con = con.append(temp1)
-        con['label'] = 1
+        con['label'] = 'contradiction'
         con.drop_duplicates(inplace=True)
 
         for i, j in list(combinations(claim_yes.index, 2)):
             ent = ent.append({'text_a': claim_yes.claim[i],
                               'text_b': claim_yes.claim[j],
-                              'label': 0},
+                              'label': 'entailment'},
                              ignore_index=True)
 
         for i, j in list(combinations(claim_no.index, 2)):
             ent = ent.append({'text_a': claim_no.claim[i],
                               'text_b': claim_no.claim[j],
-                              'label': 0},
+                              'label': 'entailment'},
                              ignore_index=True)
 
         claim1 = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q), 'claim'])
@@ -255,11 +255,10 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
         temp = claim1.assign(key=1).merge(claim2.assign(key=1), on='key').drop('key', 1)
         temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
         neu = neu.append(temp1)
-        neu['label'] = 2
+        neu['label'] = 'neutral'
         neu.drop_duplicates(inplace=True)
 
     transfer_data = pd.concat([con, ent, neu]).reset_index(drop=True)
-    transfer_data['label'] = transfer_data.label.astype('float')
     transfer_data['guid'] = transfer_data.index
     # print(len(con))
     # print(len(ent))
