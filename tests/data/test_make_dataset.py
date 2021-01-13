@@ -5,12 +5,14 @@
 import os
 import unittest
 
-from contradictory_claims.data.make_dataset import load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, \
-    load_med_nli, load_multi_nli
+from contradictory_claims.data.make_dataset import create_mancon_sent_pairs_from_xml, \
+    load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs, load_med_nli, load_multi_nli
 
-from .constants import drug_lex_path, mancon_sent_pairs, mednli_dev_path, mednli_test_path, mednli_train_path, \
+from .constants import drug_lex_path, mancon_sent_pairs, mancon_xml_path, \
+    mednli_dev_path, mednli_test_path, mednli_train_path, \
     multinli_test_path, multinli_train_path, sample_drug_lex_path, sample_mancon_sent_pairs, \
-    sample_multinli_test_path, sample_multinli_train_path, sample_virus_lex_path, virus_lex_path
+    sample_mancon_xml_path, sample_multinli_test_path, sample_multinli_train_path, \
+    sample_virus_lex_path, virus_lex_path
 
 
 class TestMakeDataset(unittest.TestCase):
@@ -71,21 +73,31 @@ class TestMakeDataset(unittest.TestCase):
     @unittest.skip("This test can be used locally to check that ManConCorpus loads properly")
     def test_load_mancon_corpus_from_sent_pairs(self):
         """Test that ManConCorpus is loaded as expected."""
+        create_mancon_sent_pairs_from_xml(mancon_xml_path, mancon_sent_pairs)
         x_train, y_train, x_test, y_test = load_mancon_corpus_from_sent_pairs(mancon_sent_pairs)
 
-        self.assertEqual(len(x_train), 14328)
-        self.assertEqual(y_train.shape, (14328, 3))
-        self.assertEqual(len(x_test), 3583)
-        self.assertEqual(y_test.shape, (3583, 3))
+        # self.assertEqual(len(x_train), 14328)
+        # self.assertEqual(y_train.shape, (14328, 3))
+        # self.assertEqual(len(x_test), 3583)
+        # self.assertEqual(y_test.shape, (3583, 3))
+        self.assertEqual(len(x_train), 50453)
+        self.assertEqual(y_train.shape, (50453, 3))
+        self.assertEqual(len(x_test), 12614)
+        self.assertEqual(y_test.shape, (12614, 3))
 
     def test_load_mancon_corpus_from_sent_pairs_sample(self):
         """Test that ManConCorpus is loaded as expected."""
+        create_mancon_sent_pairs_from_xml(sample_mancon_xml_path, sample_mancon_sent_pairs)
         x_train, y_train, x_test, y_test = load_mancon_corpus_from_sent_pairs(sample_mancon_sent_pairs)
 
-        self.assertEqual(len(x_train), 39)
-        self.assertEqual(y_train.shape, (39, 3))
-        self.assertEqual(len(x_test), 10)
-        self.assertEqual(y_test.shape, (10, 3))
+        # self.assertEqual(len(x_train), 39)
+        # self.assertEqual(y_train.shape, (39, 3))
+        # self.assertEqual(len(x_test), 10)
+        # self.assertEqual(y_test.shape, (10, 3))
+        self.assertEqual(len(x_train), 50453)
+        self.assertEqual(y_train.shape, (50453, 3))
+        self.assertEqual(len(x_test), 12614)
+        self.assertEqual(y_test.shape, (12614, 3))
 
     def test_load_drug_virus_lexicons(self):
         """Test that the virus and drug lexicons are loaded properly."""
