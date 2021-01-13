@@ -18,7 +18,8 @@ from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar
     split_papers_on_claim_presence, tokenize_section_text
 from .models.bluebert_train_model import bluebert_create_train_model,\
     bluebert_load_model, bluebert_save_model
-from .models.evaluate_model import create_report, make_predictions, read_data_from_excel
+from .models.evaluate_model import create_report, make_predictions, make_sbert_predictions, read_data_from_excel
+from .models.sbert_models import build_sbert_model, load_sbert_model, save_sbert_model, train_sbert_model
 from .models.train_model import load_model, save_model, train_model
 
 
@@ -31,7 +32,10 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--bluebert-report/--bluebert-no-report', 'bluebert_report', default=False)
 @click.option('--multi_class/--binary_class', 'multi_class', default=True)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
-def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, multi_class, cord_version):
+@click.option('--sbert', 'sbert', default=False)
+@click.option('--logistic-regression/--no-logistic-regression', 'logistic_model', default=True)
+def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_report, multi_class, cord_version,
+         sbert, logistic_model):
     """Run main function."""
     # Model parameters
     model_name = "allenai/biomed_roberta_base"
@@ -48,6 +52,9 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
     trained_model_out_dir = 'output/transformer/biomed_roberta/24-7-2020_16-23'  # Just temporary!
+
+    sbert_trained_model_out_dir = 'output/sbert_model'
+
     bluebert_out_dir = 'output/transformer/bluebert'
 
     # CORD-19 metadata path
@@ -156,6 +163,34 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
             load_cord_pairs(cord19_training_data_path, 'Dev', multi_class=multi_class, drug_names=drug_names)
 
+        if sbert:
+            sbert_model, tokenizer = build_sbert_model(model_name, logistic_model=logistic_model)
+            sbert_model = train_sbert_model(sbert_model,
+                                            tokenizer=tokenizer,
+                                            use_man_con=True,
+                                            use_med_nli=True,
+                                            use_multi_nli=True,
+                                            use_cord=True,
+                                            multi_nli_train_x=multi_nli_train_x,
+                                            multi_nli_train_y=multi_nli_train_y,
+                                            multi_nli_test_x=multi_nli_test_x,
+                                            multi_nli_test_y=multi_nli_test_y,
+                                            med_nli_train_x=med_nli_train_x,
+                                            med_nli_train_y=med_nli_train_y,
+                                            med_nli_test_x=med_nli_test_x,
+                                            med_nli_test_y=med_nli_test_y,
+                                            man_con_train_y=man_con_train_y,
+                                            man_con_train_x=man_con_train_x,
+                                            man_con_test_x=man_con_test_x,
+                                            man_con_test_y=man_con_test_y,
+                                            cord_train_x=cord_train_x,
+                                            cord_train_y=cord_train_y,
+                                            cord_test_x=cord_test_x,
+                                            cord_test_y=cord_test_y,
+                                            batch_size=16,
+                                            num_epochs=2)
+            save_sbert_model(model=sbert_model, transformer_dir=sbert_trained_model_out_dir)
+
         # Train model
         trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
                                                    multi_nli_test_x, multi_nli_test_y,
@@ -183,6 +218,10 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
                 f.write(str(item.history) + "\n")
 
     else:
+        if sbert:
+            sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
+            sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
+
         transformer_dir = os.path.join(root_dir, trained_model_out_dir)
         pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
         trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
@@ -231,6 +270,12 @@ def main(extract, train, bluebert_train, bluebert_model_path, report, bluebert_r
         eval_data_path = os.path.join(eval_data_dir, "Pilot_Contra_Claims_Annotations_06.30.xlsx")
         active_sheet = "All_phase2"
         eval_data = read_data_from_excel(eval_data_path, active_sheet=active_sheet)
+
+        if sbert:
+            eval_data = make_sbert_predictions(df=eval_data, model=sbert_model, model_name=model_name)
+            out_report_dir = os.path.join(sbert_trained_model_out_dir)
+            create_report(eval_data, model_id=model_id, out_report_dir=out_report_dir,
+                          out_plot_dir=sbert_trained_model_out_dir)
 
         # Make predictions using trained model
         eval_data = make_predictions(df=eval_data, model=trained_model, model_name=model_name, multi_class=multi_class)

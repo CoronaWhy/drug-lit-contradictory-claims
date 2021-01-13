@@ -356,9 +356,33 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
 
     return drug_names, virus_names
 
+def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
+    """Convert Data recieved as a single format by preprocessing multi_nli, med_nli or mancon.
+
+    :param x: array containing output from one of the above functions
+    :param y: array containing labels from one of the above functions
+
+    :return: dataframe containing sentences and labels as different columnn
+    """
+    x_df = pd.DataFrame(x, columns=["sentences"])
+    x_df["sentences"] = x_df["sentences"].astype(str)
+    x_df["sentences"] = x_df["sentences"].apply(lambda x: x.replace("[CLS]", ""))
+    x_df["sentence1"] = x_df["sentences"].apply(lambda x: x.split("[SEP]")[0])
+    x_df["sentence2"] = x_df["sentences"].apply(lambda x: x.split("[SEP]")[-1])
+    x_df.drop(["sentences"], axis=1, inplace=True)
+    y_transformed = np.argmax(y, axis=1)
+    # {"contradiction": 2, "entailment": 1, "neutral": 0},
+    # for sbert need to change this to entail:2, contra:0, neut:1
+    y_df = pd.DataFrame(y_transformed, columns=["label"])
+    convert_dict = {0: 1, 1: 2, 2: 0}
+    y_df["label"] = y_df["label"].apply(lambda x: convert_dict[x]).astype(int)
+    df = pd.concat([x_df, y_df], axis=1)
+    return df
+
 
 def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = None, multi_class: bool = True,
                     repl_drug_with_spl_tkn: bool = False):
+  
     """
     Load CORD-19 annotated claim pairs for training.
 
