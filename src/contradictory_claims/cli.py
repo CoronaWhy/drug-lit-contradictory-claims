@@ -6,14 +6,12 @@ import datetime
 import json
 import os
 import shutil
-from random import randrange
 
 import click
 import pandas as pd
 
-# CHANGE ALL TO RELATIVE IMPORTS!
 from .models.bluebert_evaluate_model import bluebert_make_predictions
-from .data.make_dataset import \
+from .data.make_dataset import create_mancon_sent_pairs_from_xml,\
     load_cord_pairs, load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
     load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
@@ -117,8 +115,12 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     mednli_dev_path = os.path.join(root_dir, 'input/mednli/mli_dev_v1.jsonl')
     mednli_test_path = os.path.join(root_dir, 'input/mednli/mli_test_v1.jsonl')
 
+    # ManConCorpus xml path
+    mancon_xml_path = os.path.join(root_dir, 'input/manconcorpus/ManConCorpus.xml')
+
     # ManConCorpus processed path
-    mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+    # mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+    mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_v2.tsv')
 
     # CORD-19 annotated training data path
     ## cord19_training_data_path = \
@@ -130,6 +132,9 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     drug_lex_path = os.path.join(root_dir, 'input/drugnames/DrugNames.txt')
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
     conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
+
+    # Create ManCon sentence pairs dataset
+    create_mancon_sent_pairs_from_xml(mancon_xml_path, mancon_sent_pairs)
 
     if extract_claims:
         # Load and preprocess CORD-19 data
@@ -189,15 +194,18 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
     if train:
         # Load BERT train and test data
+        drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class)
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
-            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class)
+            load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class,
+                         drug_names=drug_names)
         man_con_train_x, man_con_train_y, man_con_test_x, man_con_test_y = \
-            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class)
+            load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class, drug_names=drug_names)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
             load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
+
 
         # Create the dir to save results
         if not os.path.exists(out_dir):
@@ -405,7 +413,6 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
             pass
             # sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
             # sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
-
 
 if __name__ == '__main__':
     main()

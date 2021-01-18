@@ -49,9 +49,15 @@ mednli_train_path = os.path.join(ROOT_DIR, 'input/mednli/mli_train_v1.jsonl')
 mednli_dev_path = os.path.join(ROOT_DIR, 'input/mednli/mli_dev_v1.jsonl')
 mednli_test_path = os.path.join(ROOT_DIR, 'input/mednli/mli_test_v1.jsonl')
 
+# ManConCorpus xml path
+mancon_xml_path = os.path.join(ROOT_DIR, 'input/manconcorpus/ManConCorpus.xml')
+sample_mancon_xml_path = os.path.join(ROOT_DIR, 'tests/data/resources/sample_mancon_xml.xml')
+
 # ManConCorpus processed path
-mancon_sent_pairs = os.path.join(ROOT_DIR, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
-sample_mancon_sent_pairs = os.path.join(ROOT_DIR, 'tests/data/resources/sample_mancon.txt')
+# mancon_sent_pairs = os.path.join(ROOT_DIR, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
+# sample_mancon_sent_pairs = os.path.join(ROOT_DIR, 'tests/data/resources/sample_mancon.txt')
+mancon_sent_pairs = os.path.join(ROOT_DIR, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_v2.tsv')
+sample_mancon_sent_pairs = os.path.join(ROOT_DIR, 'tests/data/resources/sample_mancon_v2.txt')
 
 # Other input paths
 drug_lex_path = os.path.join(ROOT_DIR, 'input/drugnames/DrugNames.txt')
