@@ -29,6 +29,7 @@ from .models.train_model import load_model, save_model, train_model
 
 
 @click.command()
+@click.option('--output_folder', 'out_dir')
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--biobert/--no-biobert', 'biobert', default=True)
 @click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
@@ -41,6 +42,7 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
 @click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
 @click.option('--report/--no-report', 'report', default=True)
+@click.option('--mancon-report/--no-mancon-report', 'mancon_report', default=True)
 @click.option('--multi_class/--binary_class', 'multi_class', default=True)
 @click.option('--cord-version', 'cord_version', default='2020-08-10')
 @click.option('--learning_rate', 'learning_rate', default=1e-6)
@@ -48,8 +50,8 @@ from .models.train_model import load_model, save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, use_mednli,
-         use_mancon, use_roamdev, extract_claims, report, multi_class, cord_version, learning_rate,
+def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, use_mednli,
+         use_mancon, use_roamdev, extract_claims, mancon_report, report, multi_class, cord_version, learning_rate,
          batch_size, epochs, class_weights, aux_input):
 
     """Run main function."""
@@ -63,32 +65,32 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
     #                 break
 
     config = {
-        "train" : train,
-        "biobert" : biobert,
-        "bluebert" : bluebert,
-        "bluebert_model_path" : bluebert_model_path,
-        "sbert" : sbert,
-        "sbert_logistic_regression" : logistic_model,
-        "use_multinli" : use_multinli,
-        "use_mednli" : use_mednli,
-        "use_mancon" : use_mancon,
-        "use_roamdev" : use_roamdev,
-        "extract_claims" : extract_claims,
-        "report" : report,
-        "multi_class" : multi_class,
-        "cord_version" : cord_version,
-        "learning_rate" : learning_rate,
-        "batch_size" : batch_size,
-        "epochs" : epochs,
-        "class_weights" : class_weights,
-        "aux_input" : aux_input
+        "train": train,
+        "biobert": biobert,
+        "bluebert": bluebert,
+        "bluebert_model_path": bluebert_model_path,
+        "sbert": sbert,
+        "sbert_logistic_regression": logistic_model,
+        "use_multinli": use_multinli,
+        "use_mednli": use_mednli,
+        "use_mancon": use_mancon,
+        "use_roamdev": use_roamdev,
+        "extract_claims": extract_claims,
+        "report": report,
+        "multi_class": multi_class,
+        "cord_version": cord_version,
+        "learning_rate": learning_rate,
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "class_weights": class_weights,
+        "aux_input": aux_input
     }
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
-    now = str(datetime.datetime.now()).replace(" ", "_")
-    ri = str(randrange(1000))
-    uid = f"{now}_RI{ri}"
+    # now = str(datetime.datetime.now()).replace(" ", "_")
+    # ri = str(randrange(1000))
+    # uid = f"{now}_RI{random_int}"
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
@@ -197,6 +199,10 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
             load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
+        # Create the dir to save results
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
         if biobert:
             # Train model
             trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
@@ -220,24 +226,16 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
 
             # Save model
             # out_dir = 'output/working/biomed_roberta_base/'
-            out_dir = output_dir
-            biobert_out_dir = f"output/trained_biobert/biobert_{uid}"
-            if not os.path.exists(biobert_out_dir):
-                os.makedirs(biobert_out_dir)
-            save_model(trained_model, timed_dir_name=False, transformer_dir=biobert_out_dir)
+            # out_dir = output_dir
+            # biobert_out_dir = f"output/trained_biobert/biobert_{uid}"
+            save_model(trained_model, timed_dir_name=False, transformer_dir=out_dir)
             shutil.make_archive('biobert_output', 'zip', root_dir=out_dir)  # ok currently this seems to do nothing
 
             # Save model train history
-            out_train_hist_dir = os.path.join(biobert_out_dir, 'train_history.txt')
+            out_train_hist_dir = os.path.join(out_dir, 'train_history.txt')
             with open(out_train_hist_dir, 'w') as f:
                 for item in train_history:
                     f.write(str(item.history) + "\n")
-
-            # Save config
-            myJSON = json.dumps(config)
-            with open(os.path.join(biobert_out_dir, "config.json"), "w") as jsonfile:
-                jsonfile.write(myJSON)
-                print("Written config file for this run.")
 
             if report:
                 # Make predictions using trained model
@@ -246,7 +244,22 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                              multi_class=multi_class)
 
                 # Now create the report
-                out_report_dir = os.path.join(biobert_out_dir, 'reports')
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'reports/{now}')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+                create_report(eval_data, model_id="biomed_roberta", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
+
+            if mancon_report:
+                # Make predictions using trained model
+                eval_data = make_predictions(df=MANCON_DATA, model=trained_model,
+                                             model_name="allenai/biomed_roberta_base",
+                                             multi_class=multi_class)
+
+                # Now create the report
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'mancon_reports/{now}')
                 if not os.path.exists(out_report_dir):
                     os.makedirs(out_report_dir)
                 create_report(eval_data, model_id="biomed_roberta", out_report_dir=out_report_dir,
@@ -270,23 +283,16 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                                  batch_size=batch_size,
                                                  epochs=epochs,  # class_weights, aux_input,
                                                  multi_class=multi_class)
+
             # Save model
-            bluebert_out_dir = f"output/trained_bluebert/bluebert_{uid}"
-            if not os.path.exists(bluebert_out_dir):
-                os.makedirs(bluebert_out_dir)
-            bluebert_save_model(bluebert_trained_model, bluebert_save_path=bluebert_out_dir)
+            # bluebert_out_dir = f"output/trained_bluebert/bluebert_{uid}"
+            bluebert_save_model(bluebert_trained_model, bluebert_save_path=out_dir)
 
             # Save model train history
-            out_train_hist_dir = os.path.join(bluebert_out_dir, 'train_history.txt')
+            out_train_hist_dir = os.path.join(out_dir, 'train_history.txt')
             with open(out_train_hist_dir, 'w') as f:
                 for item in bluebert_train_hist:
                     f.write(str(item) + "\n")
-
-            # Save config
-            myJSON = json.dumps(config)
-            with open(os.path.join(bluebert_out_dir, "config.json"), "w") as jsonfile:
-                jsonfile.write(myJSON)
-                print("Written config file for this run.")
 
             if report:
                 # Make predictions using trained model
@@ -296,7 +302,23 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                                       multi_class=multi_class)
 
                 # Now create the report
-                out_report_dir = os.path.join(bluebert_out_dir, 'reports')
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'reports/{now}')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+                create_report(eval_data, model_id="bluebert", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
+
+            if mancon_report:
+                # Make predictions using trained model
+                eval_data = bluebert_make_predictions(df=MANCON_DATA, bluebert_pretrained_path=bluebert_model_path,
+                                                      model=bluebert_trained_model, device=device,
+                                                      model_name='bluebert',
+                                                      multi_class=multi_class)
+
+                # Now create the report
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'mancon_reports/{now}')
                 if not os.path.exists(out_report_dir):
                     os.makedirs(out_report_dir)
                 create_report(eval_data, model_id="bluebert", out_report_dir=out_report_dir,
@@ -332,16 +354,8 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                             learning_rate=learning_rate)
 
             # Save model
-            sbert_out_dir = f"output/trained_sbert/sbert_{uid}"
-            if not os.path.exists(sbert_out_dir):
-                os.makedirs(sbert_out_dir)
-            save_sbert_model(model=sbert_model, transformer_dir=sbert_out_dir)
-
-            # Save config
-            myJSON = json.dumps(config)
-            with open(os.path.join(sbert_out_dir, "config.json"), "w") as jsonfile:
-                jsonfile.write(myJSON)
-                print("Written config file for this run.")
+            # sbert_out_dir = f"output/trained_sbert/sbert_{uid}"
+            save_sbert_model(model=sbert_model, transformer_dir=out_dir)
 
             if report:
                 print(type(sbert_model))
@@ -349,12 +363,34 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
                                                    model_name="allenai/biomed_roberta_base")
 
                 # Now create the report
-                out_report_dir = os.path.join(sbert_out_dir, 'reports')
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'reports/{now}')
                 if not os.path.exists(out_report_dir):
                     os.makedirs(out_report_dir)
 
                 create_report(eval_data, model_id="biobert_sbert", out_report_dir=out_report_dir,
                               out_plot_dir=out_report_dir)
+
+            if mancon_report:
+                print(type(sbert_model))
+                eval_data = make_sbert_predictions(df=MANCON_DATA, model=sbert_model,
+                                                   model_name="allenai/biomed_roberta_base")
+
+                # Now create the report
+                now = str(datetime.datetime.now()).replace(" ", "_")
+                out_report_dir = os.path.join(out_dir, f'mancon_reports/{now}')
+                if not os.path.exists(out_report_dir):
+                    os.makedirs(out_report_dir)
+
+                create_report(eval_data, model_id="biobert_sbert", out_report_dir=out_report_dir,
+                              out_plot_dir=out_report_dir)
+
+        # Save config
+        myJSON = json.dumps(config)
+        with open(os.path.join(out_dir, "config.json"), "w") as jsonfile:
+            jsonfile.write(myJSON)
+            print("Written config file for this run.")
+
     else:  # if not train
         # NOTE: Need to revisit all of this
         if biobert:
