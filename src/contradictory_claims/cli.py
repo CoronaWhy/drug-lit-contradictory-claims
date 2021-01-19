@@ -121,6 +121,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     # ManConCorpus processed path
     # mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
     mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_v2.tsv')
+    mancon_eval_path = os.path.join(root_dir, 'input/manconcorpus/manconcorpus_benchmark_eval_data.tsv')
 
     # CORD-19 annotated training data path
     ## cord19_training_data_path = \
@@ -133,8 +134,8 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     virus_lex_path = os.path.join(root_dir, 'input/virus-words/virus_words.txt')
     conc_search_terms_path = os.path.join(root_dir, 'input/conclusion-search-terms/Conclusion_Search_Terms.txt')
 
-    # Create ManCon sentence pairs dataset
-    create_mancon_sent_pairs_from_xml(mancon_xml_path, mancon_sent_pairs)
+    # Create ManCon sentence pairs dataset. Also return the eval data to be used
+    mancon_eval_data = create_mancon_sent_pairs_from_xml(mancon_xml_path, mancon_sent_pairs, mancon_eval_path)
 
     if extract_claims:
         # Load and preprocess CORD-19 data
@@ -261,7 +262,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
             if mancon_report:
                 # Make predictions using trained model
-                eval_data = make_predictions(df=MANCON_DATA, model=trained_model,
+                eval_data = make_predictions(df=mancon_eval_data, model=trained_model,
                                              model_name="allenai/biomed_roberta_base",
                                              multi_class=multi_class)
 
@@ -319,7 +320,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
             if mancon_report:
                 # Make predictions using trained model
-                eval_data = bluebert_make_predictions(df=MANCON_DATA, bluebert_pretrained_path=bluebert_model_path,
+                eval_data = bluebert_make_predictions(df=mancon_eval_data, bluebert_pretrained_path=bluebert_model_path,
                                                       model=bluebert_trained_model, device=device,
                                                       model_name='bluebert',
                                                       multi_class=multi_class)
@@ -381,7 +382,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
             if mancon_report:
                 print(type(sbert_model))
-                eval_data = make_sbert_predictions(df=MANCON_DATA, model=sbert_model,
+                eval_data = make_sbert_predictions(df=mancon_eval_data, model=sbert_model,
                                                    model_name="allenai/biomed_roberta_base")
 
                 # Now create the report

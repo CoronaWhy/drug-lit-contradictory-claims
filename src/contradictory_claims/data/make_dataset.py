@@ -203,12 +203,13 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: Lis
     return x_train, y_train, x_test, y_test
 
 
-def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
+def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_save_path: str):
     """
     Create sentence pairs dataset from the original xml ManCon Corpus.
 
     :param xml_path: path to xml corpus
     :param save_path: path to save the sentence pairs dataset
+    :param eval_data_save_path: path to save the evaluation version of manconcorpus (for benchmarking)
     """
     xtree = ET.parse(xml_path)  # TODO: Fix error # noqa: S314
     xroot = xtree.getroot()
@@ -221,6 +222,12 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
                                                           'assertion': claim.attrib.get('ASSERTION'),
                                                           'question': claim.attrib.get('QUESTION')},
                                                          ignore_index=True)
+
+    # Going to output a version of this to use as evaluation data for benchmarking...
+    mcc_eval_data = manconcorpus_data.rename(columns={"question": "text1", "claim": "text2", "assertion": "annotation"})
+    mcc_eval_data["assertion"] = mcc_eval_data["assertion"].str.replace('YS', 'entailment')
+    mcc_eval_data["assertion"] = mcc_eval_data["assertion"].str.replace('NO', 'contradiction')
+    mcc_eval_data.to_csv(eval_data_save_path, sep='\t', index=False)
     # print(len(manconcorpus_data))
 
     questions = list(set(manconcorpus_data.question))
@@ -268,7 +275,8 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
 
     transfer_data.to_csv(save_path, sep='\t', index=False)
 
-    return
+    # Might as well also return this data, although it gets saved to a TSV too.
+    return mcc_eval_data
 
 
 def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
