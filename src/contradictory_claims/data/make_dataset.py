@@ -3,6 +3,9 @@
 # -*- coding: utf-8 -*-
 
 import json
+import xml.etree.ElementTree as ET  # TODO: Fix error # noqa: S405, N817
+from itertools import combinations
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -11,7 +14,23 @@ from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
 
-def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
+def replace_drug_with_spl_token(text: List[str], drug_names: List[str] = None):
+    """
+    Replace drug name with a special token.
+
+    :param text: list of input text containing drug name
+    :param drug_names: list of drug names to replace
+    :return: Text with all drug occurrances replaced by special token
+    """
+    text_out = text
+    for drug in drug_names:
+        text_out = [str(t).replace(drug, "$drug$") for t in text_out]
+
+    return text_out
+
+
+def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None, multi_class: bool = True,
+                   repl_drug_with_spl_tkn: bool = False, downsample: float = 0.1):
     """
     Load MultiNLI data for training.
 
@@ -19,11 +38,14 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
     :param test_path: path to MultiNLI test data
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
+    :param drug_names: list of drug names to replace
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param downsample: fraction to downsample MultiNLI to facilitate training
     :return: MultiNLI sentence pairs and labels for training and test sets, respectively
     """
     # If not drop NaNs in sentences now, could lead to problems when encoding
-    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
-    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
+    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
+    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
 
     # Map labels to numerical (categorical) values
     multinli_train_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
@@ -34,9 +56,7 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
     # Insert the CLS and SEP tokens
     if multi_class:
         x_train = '[CLS]' + multinli_train_data.sentence1 + '[SEP]' + multinli_train_data.sentence2
-        x_train = x_train.to_numpy()
         x_test = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2
-        x_test = x_test.to_numpy()
 
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(multinli_train_data.gold_label, dtype='int')
@@ -51,7 +71,6 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
                     '[SEP]' + 'NEU'
         x_train = x_train_1.append(x_train_2)
         x_train = x_train.append(x_train_3)
-        x_train = x_train.to_numpy()
         x_test_1 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
                    '[SEP]' + 'CON'
         x_test_2 = '[CLS]' + multinli_test_data.sentence1 + '[SEP]' + multinli_test_data.sentence2 +\
@@ -60,7 +79,6 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
                    '[SEP]' + 'NEU'
         x_test = x_test_1.append(x_test_2)
         x_test = x_test.append(x_test_3)
-        x_test = x_test.to_numpy()
 
         # Reformat to binary variable
         y_train_1 = [1 if label == 2 else 0 for label in multinli_train_data.gold_label]
@@ -74,11 +92,20 @@ def load_multi_nli(train_path: str, test_path: str, multi_class: bool = True):
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
 
+    # Replace drug name occurence with special token
+    if repl_drug_with_spl_tkn:
+        x_train = replace_drug_with_spl_token(x_train, drug_names)
+        x_test = replace_drug_with_spl_token(x_test, drug_names)
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
+
     return x_train, y_train, x_test, y_test
 
 
-def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pairs_per_class: int = None,
-                 multi_class: bool = True):
+def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: List[str] = None,
+                 num_training_pairs_per_class: int = None,
+                 multi_class: bool = True, repl_drug_with_spl_tkn: bool = False):
     """
     Load MedNLI data for training.
 
@@ -89,6 +116,8 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
         If None, all sentence pairs are retrieved
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
+    :param drug_names: list of drug names to replace
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
     :return: MedNLI sentence pairs and labels for training and test sets, respectively
     """
     # Question: how do you have long docstrings that violate character limit but not get flake8 on my case
@@ -128,9 +157,7 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
     # Insert the CLS and SEP tokens
     if multi_class:
         x_train = '[CLS]' + mednli_data.sentence1 + '[SEP]' + mednli_data.sentence2
-        x_train = x_train.to_numpy()
         x_test = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2
-        x_test = x_test.to_numpy()
 
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(mednli_data.gold_label)
@@ -145,7 +172,6 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
                     '[SEP]' + 'NEU'
         x_train = x_train_1.append(x_train_2)
         x_train = x_train.append(x_train_3)
-        x_train = x_train.to_numpy()
         x_test_1 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
                    '[SEP]' + 'CON'
         x_test_2 = '[CLS]' + mednli_test_data.sentence1 + '[SEP]' + mednli_test_data.sentence2 +\
@@ -154,7 +180,6 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
                    '[SEP]' + 'NEU'
         x_test = x_test_1.append(x_test_2)
         x_test = x_test.append(x_test_3)
-        x_test = x_test.to_numpy()
 
         # Reformat to binary variable
         y_train_1 = [1 if label == 2 else 0 for label in mednli_data.gold_label]
@@ -168,18 +193,108 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, num_training_pa
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
 
+    # Replace drug name occurence with special token
+    if repl_drug_with_spl_tkn:
+        x_train = replace_drug_with_spl_token(x_train, drug_names)
+        x_test = replace_drug_with_spl_token(x_test, drug_names)
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
+
     return x_train, y_train, x_test, y_test
 
 
-def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
-                                       multi_class: bool = True):  # noqa: D205,D400
+def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_save_path: str):
     """
-    Load ManConCorpus data. NOTE: this data must be preprocessed as sentence pairs. This format is a TSV with four
-        columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
+    Create sentence pairs dataset from the original xml ManCon Corpus.
+
+    :param xml_path: path to xml corpus
+    :param save_path: path to save the sentence pairs dataset
+    :param eval_data_save_path: path to save the evaluation version of manconcorpus (for benchmarking)
+    """
+    xtree = ET.parse(xml_path)  # TODO: Fix error # noqa: S314
+    xroot = xtree.getroot()
+
+    manconcorpus_data = pd.DataFrame(columns=['claim', 'assertion', 'question'])
+
+    for node in xroot:
+        for claim in node.findall('CLAIM'):
+            manconcorpus_data = manconcorpus_data.append({'claim': claim.text,
+                                                          'assertion': claim.attrib.get('ASSERTION'),
+                                                          'question': claim.attrib.get('QUESTION')},
+                                                         ignore_index=True)
+
+    # Going to output a version of this to use as evaluation data for benchmarking...
+    mcc_eval_data = manconcorpus_data.rename(columns={"question": "text1", "claim": "text2", "assertion": "annotation"})
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('YS', 'entailment')
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('NO', 'contradiction')
+    mcc_eval_data.to_csv(eval_data_save_path, sep='\t', index=False)
+    # print(len(manconcorpus_data))
+
+    questions = list(set(manconcorpus_data.question))
+    con = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+    ent = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+    neu = pd.DataFrame(columns=['text_a', 'text_b', 'label'])
+
+    for q in questions:
+        claim_yes = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q)
+                                                       & (manconcorpus_data.assertion == 'YS'), 'claim'])  # noqa: W503
+        claim_no = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q)
+                                                      & (manconcorpus_data.assertion == 'NO'), 'claim'])  # noqa: W503
+        temp = claim_yes.assign(key=1).merge(claim_no.assign(key=1), on='key').drop('key', 1)
+        temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
+        con = con.append(temp1)
+        con['label'] = 'contradiction'
+        con.drop_duplicates(inplace=True)
+
+        for i, j in list(combinations(claim_yes.index, 2)):
+            ent = ent.append({'text_a': claim_yes.claim[i],
+                              'text_b': claim_yes.claim[j],
+                              'label': 'entailment'},
+                             ignore_index=True)
+
+        for i, j in list(combinations(claim_no.index, 2)):
+            ent = ent.append({'text_a': claim_no.claim[i],
+                              'text_b': claim_no.claim[j],
+                              'label': 'entailment'},
+                             ignore_index=True)
+
+        claim1 = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question == q), 'claim'])
+        claim2 = pd.DataFrame(manconcorpus_data.loc[(manconcorpus_data.question != q), 'claim'])
+        temp = claim1.assign(key=1).merge(claim2.assign(key=1), on='key').drop('key', 1)
+        temp1 = temp.rename(columns={'claim_x': 'text_a', 'claim_y': 'text_b'})
+        neu = neu.append(temp1)
+        neu['label'] = 'neutral'
+        neu.drop_duplicates(inplace=True)
+
+    transfer_data = pd.concat([con, ent, neu]).reset_index(drop=True)
+    transfer_data['guid'] = transfer_data.index
+    # print(len(con))
+    # print(len(ent))
+    # print(len(neu))
+    # print(len(transfer_data))
+
+    transfer_data.to_csv(save_path, sep='\t', index=False)
+
+    # Might as well also return this data, although it gets saved to a TSV too.
+    return mcc_eval_data
+
+
+def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
+                                       drug_names: List[str] = None,
+                                       multi_class: bool = True,  # noqa: D205,D400
+                                       repl_drug_with_spl_tkn: bool = False):
+    """
+    Load ManConCorpus data.
+
+    NOTE: This data must be preprocessed as sentence pairs. This format is a TSV with four
+    columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
 
     :param mancon_sent_pair_path: path to ManCon sentence pair file
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
+    :param drug_names: list of drug names to replace
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
     :return: ManConCorpus sentence pairs and labels for training and test sets, respectively
     """
     mancon_data = pd.read_csv(mancon_sent_pair_path, sep='\t')
@@ -194,9 +309,6 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
         '[CLS]' + mancon_data.text_a + '[SEP]' + mancon_data.text_b, mancon_data['label'], test_size=0.2,
         stratify=mancon_data['label'])
     if multi_class:
-        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
-        x_test = x_test.to_numpy()
-
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(y_train_tmp)
         y_test = np_utils.to_categorical(y_test_tmp)
@@ -207,13 +319,11 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
         x_train_3 = x_train + '[SEP]' + 'NEU'
         x_train = x_train_1.append(x_train_2)
         x_train = x_train.append(x_train_3)
-        x_train = x_train.to_numpy()
         x_test_1 = x_test + '[SEP]' + 'CON'
         x_test_2 = x_test + '[SEP]' + 'ENT'
         x_test_3 = x_test + '[SEP]' + 'NEU'
         x_test = x_test_1.append(x_test_2)
         x_test = x_test.append(x_test_3)
-        x_test = x_test.to_numpy()
 
         # Reformat to binary variable
         y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
@@ -226,6 +336,14 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
         y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
+
+    # Replace drug name occurence with special token
+    if repl_drug_with_spl_tkn:
+        x_train = replace_drug_with_spl_token(x_train, drug_names)
+        x_test = replace_drug_with_spl_token(x_test, drug_names)
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
 
     return x_train, y_train, x_test, y_test
 
@@ -247,7 +365,6 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     virus_names = list(virus_names[0])
 
     return drug_names, virus_names
-
 
 def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     """Convert Data recieved as a single format by preprocessing multi_nli, med_nli or mancon.
@@ -273,7 +390,9 @@ def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     return df
 
 
-def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True):
+def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = None, multi_class: bool = True,
+                    repl_drug_with_spl_tkn: bool = False):
+  
     """
     Load CORD-19 annotated claim pairs for training.
 
@@ -281,6 +400,8 @@ def load_cord_pairs(data_path: str, active_sheet: str, multi_class: bool = True)
     :param active_sheet: name of active sheet with data
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
+    :param drug_names: list of drug names to replace
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
     :return: CORD-19 sentence pairs and labels for training and test sets, respectively
     """
     cord_data = read_data_from_excel(data_path, active_sheet)
@@ -371,9 +492,6 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
     y_test_tmp = cord_data_dev.label
 
     if multi_class:
-        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
-        x_test = x_test.to_numpy()
-
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(y_train_tmp)
         y_test = np_utils.to_categorical(y_test_tmp)
@@ -384,13 +502,11 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
         x_train_3 = x_train + '[SEP]' + 'NEU'
         x_train = x_train_1.append(x_train_2)
         x_train = x_train.append(x_train_3)
-        x_train = x_train.to_numpy()
         x_test_1 = x_test + '[SEP]' + 'CON'
         x_test_2 = x_test + '[SEP]' + 'ENT'
         x_test_3 = x_test + '[SEP]' + 'NEU'
         x_test = x_test_1.append(x_test_2)
         x_test = x_test.append(x_test_3)
-        x_test = x_test.to_numpy()
 
         # Reformat to binary variable
         y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
@@ -403,5 +519,13 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
         y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
+
+    # Replace drug name occurence with special token
+    if repl_drug_with_spl_tkn:
+        x_train = replace_drug_with_spl_token(x_train, drug_names)
+        x_test = replace_drug_with_spl_token(x_test, drug_names)
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
 
     return x_train, y_train, x_test, y_test

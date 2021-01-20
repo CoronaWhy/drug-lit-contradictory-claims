@@ -89,7 +89,7 @@ def make_timeline_plot(names: List[str],
         ax.annotate("",
                     xy=layout[edge[0]], xycoords='data',
                     xytext=layout[edge[1]], textcoords='data',
-                    arrowprops=dict(arrowstyle="-", color="0.5",   # noqa: C408
+                    arrowprops=dict(arrowstyle="-", color="0.5",  # noqa: C408
                                     shrinkA=10, shrinkB=10,
                                     patchA=None, patchB=None,
                                     connectionstyle="arc,rad=0.5"))

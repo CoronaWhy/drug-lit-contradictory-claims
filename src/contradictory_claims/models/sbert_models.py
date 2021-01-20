@@ -242,7 +242,7 @@ def trainer(model: SBERTPredictor,
         warmup_steps=warmup_steps,
     )  # train the Transformer layer
     freeze_layer(model.embedding_model)
-    x, y = format_create(df=df_train.append(df_val), model=model)
+    x, y = format_create(df=df_train, model=model)
     x_test, y_test = format_create(df=df_val, model=model)
     if model.logistic_model is True:
         model.logisticregression.fit(x, y)
