@@ -30,7 +30,7 @@ def replace_drug_with_spl_token(text: List[str], drug_names: List[str] = None):
 
 
 def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None, multi_class: bool = True,
-                   repl_drug_with_spl_tkn: bool = False):
+                   repl_drug_with_spl_tkn: bool = False, downsample: float = 0.1):
     """
     Load MultiNLI data for training.
 
@@ -40,11 +40,12 @@ def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None
         and data is prepared for binary classification.
     :param drug_names: list of drug names to replace
     :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param downsample: fraction to downsample MultiNLI to facilitate training
     :return: MultiNLI sentence pairs and labels for training and test sets, respectively
     """
     # If not drop NaNs in sentences now, could lead to problems when encoding
-    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
-    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"])
+    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
+    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
 
     # Map labels to numerical (categorical) values
     multinli_train_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
@@ -225,8 +226,8 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_s
 
     # Going to output a version of this to use as evaluation data for benchmarking...
     mcc_eval_data = manconcorpus_data.rename(columns={"question": "text1", "claim": "text2", "assertion": "annotation"})
-    mcc_eval_data["assertion"] = mcc_eval_data["assertion"].str.replace('YS', 'entailment')
-    mcc_eval_data["assertion"] = mcc_eval_data["assertion"].str.replace('NO', 'contradiction')
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('YS', 'entailment')
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('NO', 'contradiction')
     mcc_eval_data.to_csv(eval_data_save_path, sep='\t', index=False)
     # print(len(manconcorpus_data))
 
