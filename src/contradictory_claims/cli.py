@@ -83,6 +83,7 @@ def main(train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, u
         "class_weights" : class_weights,
         "aux_input" : aux_input
     }
+    print(config)
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
