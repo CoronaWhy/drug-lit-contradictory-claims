@@ -5,6 +5,7 @@
 import json
 import xml.etree.ElementTree as ET  # TODO: Fix error # noqa: S405, N817
 from itertools import combinations
+import os
 from typing import List
 
 import numpy as np
@@ -274,7 +275,9 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_s
     # print(len(neu))
     # print(len(transfer_data))
 
-    transfer_data.to_csv(save_path, sep='\t', index=False)
+    # Ensuring the file doesn't already exist to avoid conflicts from multiple jobs creating this file.
+    if not os.path.exists(save_path):
+        transfer_data.to_csv(save_path, sep='\t', index=False)
 
     # Might as well also return this data, although it gets saved to a TSV too.
     return mcc_eval_data
