@@ -454,7 +454,7 @@ def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = N
     return x_train, y_train, x_test, y_test
 
 
-def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True):
+def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True, repl_drug_with_spl_tkn: bool = False):
     """
     Load CORD-19 annotated claim pairs for training.
 
@@ -463,6 +463,7 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
     :param dev_sheet: name of the Excel sheet containing the dev set
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
     :return: CORD-19 sentence pairs and labels for training and test sets, respectively
     """
     cord_data_train = read_data_from_excel(data_path, train_sheet)
