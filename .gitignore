@@ -144,6 +144,13 @@ submit_train.sh
 biobert*
 wandb*
 tests/models/test_output/
+compile_results.py
+notebooks/roam_covid_contradict.ipynb
+notebooks/making_roam_trainvaltest.ipynb
+notebooks/Experimental_New_Functionality.ipynb
+notebooks/Contradictory_claims_Roam_scaling_round_V2.xlsx
+submit_train_many_biobert.sh
+
 
 # tests/data/resources/cord19/extracted/document_parses/
 
