@@ -7,6 +7,7 @@ import os
 import pickle
 import shutil
 import ssl
+from random import randrange
 
 import numpy as np
 import torch
@@ -324,7 +325,8 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
 
     else:
         model_name = "allenai/biomed_roberta_base"
-        model_save_path = "biobert_path"
+        ri = str(randrange(100000))
+        model_save_path = f"/scratch/users/dnsosa/biobert_models/biobert_RI{ri}"
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path, exist_ok=True)
         wget.download(
