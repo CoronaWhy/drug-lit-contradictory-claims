@@ -3,13 +3,14 @@
 # -*- coding: utf-8 -*-
 
 
-from ..data.prepare_claims_for_roam import polarity_v_score, polarity_tb_score
+from ..data.prepare_claims_for_roam import polarity_tb_score, polarity_v_score
 
 
 def classify_on_opposed_polarity(text1: str, text2: str, min_polarity: float = 0.0, vader: bool = True) -> int:
     """
     Classify as entail, contradict, neutral based only on polarity. If polarity is opposite = contradiction, if
     polarity is same = entailment, if at least one isn't polar, then neutral.
+
     :param text1: claim 1
     :param text2: claim 2
     :param min_polarity: minimum absolute polarity to call positive or negative
@@ -32,4 +33,3 @@ def classify_on_opposed_polarity(text1: str, text2: str, min_polarity: float = 0
         return 1
     else:
         return 0
-

@@ -29,6 +29,7 @@ from ..data.make_dataset import remove_tokens_get_sentence_sbert
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+
 class SBERTPredictor(SentenceTransformer):
     """SBERT Prediction class."""
 
@@ -326,6 +327,7 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
     else:
         model_name = "allenai/biomed_roberta_base"
         ri = str(randrange(100000))
+        # ToDo: Need to not hard-code these paths
         model_save_path = f"/scratch/users/dnsosa/biobert_models/biobert_RI{ri}"
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path, exist_ok=True)

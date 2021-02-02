@@ -2,19 +2,18 @@
 
 # -*- coding: utf-8 -*-
 
+import itertools
+import logging
 import os
 import re
 import ssl
 
 import gensim.downloader as api
-import itertools
 import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-import logging
 import pandas as pd
 from fse import SplitIndexedList
-# from fse.models.average import FAST_VERSION, MAX_WORDS_IN_BATCH
 from fse.models import uSIF
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from textblob import TextBlob
 
 
@@ -22,9 +21,11 @@ INPUT_CLAIMS_FILE = "/Users/dnsosa/Downloads/processed_claims_150820.csv"
 NON_CLAIMS_FILE = "/Users/dnsosa/Downloads/RoamPairs/non_claims_file.txt"
 OUTPUT_CLAIMS_FILE = "/Users/dnsosa/Downloads/RoamPairs/pairs_by_topic_09_18_20_abs_conc_no_nonclaims.xlsx"
 
+
 def polarity_tb_score(text: str) -> float:
     """
     Calculate polarity of a sentence using TextBlob.
+
     :param text: input sentence
     :return: polarity value of sentence. Ranges from -1 (negative) to 1 (positive).
     """
@@ -34,6 +35,7 @@ def polarity_tb_score(text: str) -> float:
 def polarity_v_score(text: str) -> float:
     """
     Calculate polarity of a sentence using Vader.
+
     :param text: input sentence
     :return: polarity value of sentence. Ranges from -1 (negative) to 1 (positive).
     """
@@ -50,6 +52,7 @@ def generate_claims_for_annotators(input_claims_file: str,
                                    only_we: bool = False):
     """
     Generate claims for Roam annotators.
+
     :param input_claims_file: input file containing all claims
     :param non_claim_file: file containing some claims manually annotated as false positives
     :param output_claims_file: location of file to be output
@@ -57,7 +60,6 @@ def generate_claims_for_annotators(input_claims_file: str,
     :param k: number of positive or negative claims to be retrieved for each (drug, topic) condition
     :param only_we: Boolean--if True, only include claims that contain "we, this study, these results, etc."
     """
-
     # Load GLOVE, which is necessary for uSIF embeddings
     if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -65,37 +67,35 @@ def generate_claims_for_annotators(input_claims_file: str,
     logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
     glove = api.load("glove-wiki-gigaword-300")
 
-    # print(MAX_WORDS_IN_BATCH)
-    # print(FAST_VERSION)  # uh oh...
-
     all_claims_df = pd.read_csv(input_claims_file)
     all_claims_df = all_claims_df.drop(all_claims_df.columns[0:2], axis=1)
-    all_claims_df["polarity_vader"] = all_claims_df.apply(lambda row: polarity_v_score(row['claims']), axis = 1)
+    all_claims_df["polarity_vader"] = all_claims_df.apply(lambda row: polarity_v_score(row['claims']), axis=1)
 
-    print(f"Found {len(all_claims_df)} total claims")
+    print(f"Found {len(all_claims_df)} total claims")  # noqa: T001
     n_conc = len(all_claims_df[all_claims_df.section == "Conclusion"])
 
     all_claims = all_claims_df.claims.values
     all_claims_abs = all_claims_df[all_claims_df.section == "Abstract"].claims.values
-    all_claims_abs_conc = all_claims_df[(all_claims_df.section == "Abstract") | (all_claims_df.section == "Conclusion")].claims.values
-    we_claims = [claim for claim in all_claims if re.match("we |our |this study|this result|these data|these results", claim)]
+    all_claims_abs_conc = all_claims_df[(all_claims_df.section == "Abstract") | (all_claims_df.section == "Conclusion")].claims.values  # noqa: E501
+    we_claims = [claim for claim in all_claims if re.match("we |our |this study|this result|these data|these results", claim)]  # noqa: E501
     hcq_claims = [claim for claim in all_claims if "hydroxychloroquine" in claim]
     hcq_we_claims = [claim for claim in we_claims if "hydroxychloroquine" in claim]
-    print(f"{len(all_claims_abs)} claims in 'Abstract' section")
-    print(f"{n_conc} claims in 'Conclusion' section")
-    print(f"{len(all_claims_abs_conc)} claims in 'Conclusion' or 'Abstract' section")
-    print(f"{len(we_claims)} claims contain 'we, our, this study, this result, these data, these results'")
-    print(f"{len(hcq_claims)} claims contain the word 'hydroxychloroquine")
-    print(f"{len(hcq_we_claims)} of the 'we' claims contain the word 'hydroxychloroquine")
+    print(f"{len(all_claims_abs)} claims in 'Abstract' section")  # noqa: T001
+    print(f"{n_conc} claims in 'Conclusion' section")  # noqa: T001
+    print(f"{len(all_claims_abs_conc)} claims in 'Conclusion' or 'Abstract' section")  # noqa: T001
+    print(f"{len(we_claims)} claims contain 'we, our, this study, this result, these data, these results'")  # noqa: T001
+    print(f"{len(hcq_claims)} claims contain the word 'hydroxychloroquine")  # noqa: T001
+    print(f"{len(hcq_we_claims)} of the 'we' claims contain the word 'hydroxychloroquine")  # noqa: T001
 
     # Read in and create list of non-claims
     with open(non_claim_file) as f:
         non_claim_list = [line.rstrip() for line in f]
 
-    print(f"{len(non_claim_list)} non-claims loaded")
+    print(f"{len(non_claim_list)} non-claims loaded")  # noqa: T001
 
     topic_list = ["mortality", "effective treatment", "toxicity"]
-    drug_list = ["hydroxychloroquine", " chloroquine", "tocilizumab", "remdesivir", "vitamin d", "lopinavir", "dexamethasone"]
+    drug_list = ["hydroxychloroquine", " chloroquine", "tocilizumab", "remdesivir", "vitamin d", \
+                 "lopinavir", "dexamethasone"]
 
     # Remove non-claims from the claims list
     claims_list = list(set(all_claims_abs_conc).difference(set(non_claim_list)))
@@ -112,7 +112,7 @@ def generate_claims_for_annotators(input_claims_file: str,
             input_claims = drug_claims
 
         s = SplitIndexedList(input_claims)
-        print(len(s))
+        # print(len(s))
         # NOTE, MANY repeats
 
         # Train the uSIF model
@@ -162,15 +162,15 @@ def generate_claims_for_annotators(input_claims_file: str,
     roam_final_df = roam_final_df.rename(
         columns={"cord_uid_x": "paper1_cord_uid", "cord_uid_y": "paper2_cord_uid"}).drop_duplicates()
 
-    print(f"Resulting DF has {len(roam_final_df)} rows")
+    print(f"Resulting DF has {len(roam_final_df)} rows")  # noqa: T001
     roam_final_df = roam_final_df.drop_duplicates()
-    print(f"After dropping duplicates: {len(roam_final_df)} rows")
+    print(f"After dropping duplicates: {len(roam_final_df)} rows")  # noqa: T001
     roam_final_df = roam_final_df.groupby(["paper1_cord_uid", "paper2_cord_uid", "drug", "topic"]).sample(n=1)
-    print(f"After sampling 1 row per cord/drug/topic group to remove duplicates: {len(roam_final_df)} rows")
+    print(f"After sampling 1 row per cord/drug/topic group to remove duplicates: {len(roam_final_df)} rows")  # noqa: T001
     roam_final_df = roam_final_df[roam_final_df.text1 != roam_final_df.text2]
-    print(f"After dropping rows where text 1 == text 2: {len(roam_final_df)} rows")
+    print(f"After dropping rows where text 1 == text 2: {len(roam_final_df)} rows")  # noqa: T001
     roam_final_df = roam_final_df.groupby(["text1", "text2"]).sample(n=1)
-    print(f"After sampling 1 claim pair per text1/text2 group: {len(roam_final_df)} rows")
+    print(f"After sampling 1 claim pair per text1/text2 group: {len(roam_final_df)} rows")  # noqa: T001
 
     # Sample 1000 and send to Excel
     # Note: sample(frac=1) just shuffles everything

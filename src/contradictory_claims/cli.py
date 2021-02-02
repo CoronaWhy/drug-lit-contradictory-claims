@@ -12,18 +12,18 @@ import pandas as pd
 
 from .models.bluebert_evaluate_model import bluebert_make_predictions
 from .data.make_dataset import create_mancon_sent_pairs_from_xml,\
-    load_cord_pairs, load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
+    load_cord_pairs_v2, load_drug_virus_lexicons, load_mancon_corpus_from_sent_pairs,\
     load_med_nli, load_multi_nli
 from .data.preprocess_cord import clean_text, extract_json_to_dataframe,\
     extract_section_from_text, filter_metadata_for_covid19,\
     filter_section_with_drugs, merge_section_text
-from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
-    split_papers_on_claim_presence, tokenize_section_text
-from .models.bluebert_train_model import bluebert_create_train_model,\
-    bluebert_load_model, bluebert_save_model
+# from .data.process_claims import add_cord_metadata, initialize_nlp, pair_similar_claims,\
+#     split_papers_on_claim_presence, tokenize_section_text
+from .data.process_claims import split_papers_on_claim_presence, tokenize_section_text
+from .models.bluebert_train_model import bluebert_create_train_model, bluebert_save_model
 from .models.evaluate_model import create_report, make_predictions, make_sbert_predictions, read_data_from_excel
-from .models.sbert_models import build_sbert_model, load_sbert_model, save_sbert_model, train_sbert_model
-from .models.train_model import load_model, save_model, train_model
+from .models.sbert_models import build_sbert_model, save_sbert_model, train_sbert_model
+from .models.train_model import save_model, train_model
 
 
 @click.command()
@@ -52,16 +52,7 @@ from .models.train_model import load_model, save_model, train_model
 def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, multinli_fraction,
          use_mednli, use_mancon, use_roamdev, extract_claims, mancon_report, report, multi_class, cord_version, learning_rate,
          batch_size, epochs, class_weights, aux_input):
-
     """Run main function."""
-    # Model parameters
-    # Find path of bluebert cloned repo containing pretrained model
-    # if bluebert_train:
-    #     for root, dirs, _files in os.walk("."):
-    #         for name in dirs:
-    #             if name == 'bluebert_model_init':
-    #                 bluebert_repo_path = os.path.abspath(os.path.join(root, name))
-    #                 break
 
     config = {
         "train": train,
@@ -88,9 +79,6 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
     # File paths
     root_dir = os.path.abspath(os.path.join(__file__, "../../.."))
-    # now = str(datetime.datetime.now()).replace(" ", "_")
-    # ri = str(randrange(1000))
-    # uid = f"{now}_RI{random_int}"
 
     # CORD-19 metadata path
     metadata_path = os.path.join(root_dir, 'input', cord_version, 'metadata.csv')
@@ -103,7 +91,6 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     pub_date_cutoff = '2019-10-01'
 
     # Claims data path
-    # claims_data_path = os.path.join(root_dir, 'input/cord19/claims/claims_data.csv')
     claims_data_path = os.path.join(root_dir, "input/cord19/claims/drug_individual_claims_filtered_200620.csv")
 
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
@@ -121,13 +108,10 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     mancon_xml_path = os.path.join(root_dir, 'input/manconcorpus/ManConCorpus.xml')
 
     # ManConCorpus processed path
-    # mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_200516.tsv')
     mancon_sent_pairs = os.path.join(root_dir, 'input/manconcorpus-sent-pairs/manconcorpus_sent_pairs_v2.tsv')
     mancon_eval_path = os.path.join(root_dir, 'input/manconcorpus/manconcorpus_benchmark_eval_data.tsv')
 
     # CORD-19 annotated training data path
-    ## cord19_training_data_path = \
-    ##    os.path.join(root_dir, 'input/cord-training/Coronawhy-Contra-Claims-Scaling-v2-annotated-2020-10-21.xlsx')
     cord19_training_data_path = \
         os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
 
@@ -180,17 +164,17 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     else:
         claims_data = pd.read_csv(claims_data_path)
 
-    ## NOTE: Commenting out 12/3/20 because don't need for training
+    # NOTE: Commenting out 12/3/20 because don't need for training
     # Initialize scispacy nlp object and add virus terms to the vocabulary
-    ## nlp = initialize_nlp(virus_lex_path)
+    # nlp = initialize_nlp(virus_lex_path)
 
     # Pair similar claims
-    ## claims_paired_df = pair_similar_claims(claims_data, nlp)
+    # claims_paired_df = pair_similar_claims(claims_data, nlp)
 
     # Add paper publish time and title info
-    ## claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
+    # claims_paired_df = add_cord_metadata(claims_paired_df, metadata_path)
 
-    # For evaluaitng the models
+    # For evaluating the models
     eval_data_path = \
         os.path.join(root_dir, 'input/cord-training/Roam_annotations_trainvaltest_split_V2.xlsx')
     eval_data = read_data_from_excel(eval_data_path, active_sheet="Val")
@@ -209,7 +193,6 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
             load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
-
 
         # Create the dir to save results
         if not os.path.exists(out_dir):
@@ -291,9 +274,9 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                                                  bluebert_model_path,
                                                  use_multinli, use_mednli,
                                                  use_mancon, use_roamdev,
-                                                 ##learning_rate, #FIGURE THIS OUT
+                                                 # learning_rate, #FIGURE THIS OUT
                                                  batch_size=batch_size,
-                                                 epochs=epochs,  # class_weights, aux_input,
+                                                 epochs=epochs,  # class_weights, aux_input, ?
                                                  multi_class=multi_class)
 
             # Save model
@@ -418,26 +401,6 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
             # sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
             # sbert_model = load_sbert_model(sbert_dir, 'sigmoid.pickle')
 
+
 if __name__ == '__main__':
     main()
-    #main(train=True,
-    #     output_dir="output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001",
-    #     roberta=False,
-    #     bluebert=True,
-    #     bluebert_model_path="ttumyche/bluebert",
-    #     use_multinli=False,
-    #     use_mednli=False,
-    #     use_mancon=False,
-    #     use_roamdev=True,
-    #     extract_claims=False,
-    #     report=False,
-    #     bluebert_report=True,
-    #     multi_class=True,
-    #     learning_rate=0.00001,
-    #     batch_size=2,
-    #     epochs=1,
-    #     cord_version='2020-08-10',
-    #     class_weights=False,
-    #     aux_input=False)
-
-## python -m contradictory_claims --train --no-roberta --bluebert --output_folder output/trained_bluebert/bluebert_med_man_roam_rep5_epochs1_bs2_lr0.000001 --learning_rate 0.000001 --epochs 1 --batch_size 2 --no-multinli --roamdev

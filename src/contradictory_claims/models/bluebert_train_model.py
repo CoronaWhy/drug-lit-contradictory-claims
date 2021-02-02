@@ -14,8 +14,7 @@ from transformers import (
     AdamW,
     BertModel,
     BertTokenizer,
-    get_linear_schedule_with_warmup
-)
+    get_linear_schedule_with_warmup)
 
 
 class ContraDataset(Dataset):
@@ -255,7 +254,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 epochs: int = 3,
                                 batch_size: int = 32,
                                 criterion: str = None,
-                                multi_class: bool = True,):
+                                multi_class: bool = True):
     """
     Create and train the Bluebert Transformer model.
 

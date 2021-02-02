@@ -3,9 +3,9 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os
 import xml.etree.ElementTree as ET  # TODO: Fix error # noqa: S405, N817
 from itertools import combinations
-import os
 from typing import List
 
 import numpy as np
@@ -369,6 +369,7 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
 
     return drug_names, virus_names
 
+
 def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     """Convert Data recieved as a single format by preprocessing multi_nli, med_nli or mancon.
 
@@ -395,7 +396,6 @@ def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
 
 def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = None, multi_class: bool = True,
                     repl_drug_with_spl_tkn: bool = False):
-  
     """
     Load CORD-19 annotated claim pairs for training.
 
@@ -457,7 +457,8 @@ def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = N
     return x_train, y_train, x_test, y_test
 
 
-def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True, repl_drug_with_spl_tkn: bool = False):
+def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True,
+                       repl_drug_with_spl_tkn: bool = False, drug_names: List[str] = None):
     """
     Load CORD-19 annotated claim pairs for training.
 
@@ -467,25 +468,26 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
     :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
         and data is prepared for binary classification.
     :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param drug_names: list of drug names to replace
     :return: CORD-19 sentence pairs and labels for training and test sets, respectively
     """
     cord_data_train = read_data_from_excel(data_path, train_sheet)
     cord_data_dev = read_data_from_excel(data_path, dev_sheet)
 
     cord_data_train['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
-                          label in cord_data_train.annotation]
+                                label in cord_data_train.annotation]
     print(f"Number of contradiction pairs: {len(cord_data_train[cord_data_train.label == 2])}")  # noqa: T001
     print(f"Number of entailment pairs: {len(cord_data_train[cord_data_train.label == 1])}")  # noqa: T001
     print(f"Number of neutral pairs: {len(cord_data_train[cord_data_train.label == 0])}")  # noqa: T001
 
     cord_data_dev['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
-                                label in cord_data_dev.annotation]
+                              label in cord_data_dev.annotation]
     print(f"Number of contradiction pairs: {len(cord_data_dev[cord_data_dev.label == 2])}")  # noqa: T001
     print(f"Number of entailment pairs: {len(cord_data_dev[cord_data_dev.label == 1])}")  # noqa: T001
     print(f"Number of neutral pairs: {len(cord_data_dev[cord_data_dev.label == 0])}")  # noqa: T001
 
     # Insert the CLS and SEP tokens
-    #x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
+    # x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
     #    '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
     #    stratify=cord_data['label'])
 
@@ -524,7 +526,7 @@ def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_c
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
 
-    # Replace drug name occurence with special token
+    # Replace drug name occurrence with special token
     if repl_drug_with_spl_tkn:
         x_train = replace_drug_with_spl_token(x_train, drug_names)
         x_test = replace_drug_with_spl_token(x_test, drug_names)
