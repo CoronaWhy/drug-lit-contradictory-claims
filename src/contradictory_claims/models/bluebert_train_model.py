@@ -5,11 +5,12 @@
 import datetime
 import os
 import time
+from collections import Counter
 
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, Dataset, RandomSampler
+from torch.utils.data import DataLoader, Dataset, RandomSampler, WeightedRandomSampler
 from transformers import (
     AdamW,
     BertModel,
@@ -146,7 +147,9 @@ def bluebert_train_model(model,
                          criterion=None,
                          optimizer=None,
                          epochs: int = 3,
-                         seed: int = 42):
+                         learning_rate: float = 1e-5,
+                         seed: int = 42,
+                         enable_class_weights = True):
     """
     Train the Bluebert Transformer model.
 
@@ -156,7 +159,9 @@ def bluebert_train_model(model,
     :param criterion: training loss criterion
     :param optimizer: training loss optimizer
     :param epochs: number of epochs for training
+    :param learning_rate: learning rate
     :param seed: random seed value for initialization
+    :param enable_class_weights: enable class weights for dealing with imbalance
     :return: fine-tuned Bluebert Transformer model
     """
     # Set training loss criterion and optimizer
@@ -165,7 +170,8 @@ def bluebert_train_model(model,
     elif criterion == 'crossentropy':
         torch_criterion = torch.nn.CrossEntropyLoss()
     if optimizer is None:
-        optimizer = AdamW(model.parameters(), lr=2e-5, eps=1e-8)
+        # NOTE: using clip value
+        optimizer = AdamW(model.parameters(), lr=learning_rate, eps=1e-8, clipvalue=0.5)
 
     # Set the seed value all over the place to make this reproducible.
     np.random.seed(seed)
@@ -230,6 +236,20 @@ def bluebert_train_model(model,
     return model, loss_values
 
 
+def get_class_weights(target_list: list):
+    """Return the class weights to tackle skewness in data while training.
+    :param target_list: list indicating class membership for calculating imbalance
+    :return: list of weights
+    """
+    count_dict = Counter(target_list)
+    class_count = [count_dict[i] for i in range(3)]
+    class_weights = len(target_list) / \
+        torch.tensor(class_count, dtype=torch.float)
+    class_weights = class_weights / len(class_weights)
+    return class_weights.tolist()
+
+
+# TODO: Use the learning rate
 def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 multi_nli_train_y: np.ndarray,
                                 multi_nli_test_x: np.ndarray,
@@ -254,7 +274,9 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 epochs: int = 3,
                                 batch_size: int = 32,
                                 criterion: str = None,
-                                multi_class: bool = True):
+                                multi_class: bool = True,
+                                learning_rate: float = 1e-5,
+                                enable_class_weights: bool = True):
     """
     Create and train the Bluebert Transformer model.
 
@@ -284,6 +306,8 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param epochs: number of epochs for training
     :param batch_size: batch size for fine-tuning
     :param criterion: training loss criterion
+    :param learning_rate: learning rate
+    :param enable_class_weights: enable class weighting to deal with the imbalance
     :return: fine-tuned Bluebert Transformer model
     :return device: CPU vs GPU definition for torch
     """
@@ -291,31 +315,32 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
     # Package data into a DataLoader
+    # TODO: class weights are always on
     if use_multi_nli:
         multinli_x_train_dataset = ContraDataset(list(multi_nli_train_x), multi_nli_train_y, tokenizer, max_len=512,
                                                  multi_class=multi_class)
-        multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
+        multinli_x_train_sampler = WeightedRandomSampler(get_class_weights(list(multi_nli_train_y)), multinli_x_train_dataset)
         multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
                                                  sampler=multinli_x_train_sampler, batch_size=batch_size)
 
     if use_med_nli:
         mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
+        mednli_x_train_sampler = WeightedRandomSampler(get_class_weights(list(med_nli_train_y)), mednli_x_train_dataset)
         mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_man_con:
         mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
+        mancon_x_train_sampler = WeightedRandomSampler(get_class_weights(list(man_con_train_y)), mancon_x_train_dataset)
         mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_cord:
         cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
-        cord_x_train_sampler = RandomSampler(cord_x_train_dataset)
+        cord_x_train_sampler = WeightedRandomSampler(get_class_weights(list(cord_train_y)), cord_x_train_dataset)
         cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=batch_size)
 
     losses_list = []
@@ -323,28 +348,28 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     # Fine tune model on MultiNLI
     if use_multi_nli:
         model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
         model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
         model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
     # Fine tune model on CORD
     if use_cord:
         model, losses = bluebert_train_model(model, cord_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 

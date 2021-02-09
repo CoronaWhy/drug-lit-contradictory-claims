@@ -227,7 +227,8 @@ def trainer(model: SBERTPredictor,
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # NOTE: using gradient clipping
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, clipvalue=.5)
     model.to(device)
 
     print("------TRAINING STARTS----------")  # noqa: T001

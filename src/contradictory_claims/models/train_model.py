@@ -6,10 +6,12 @@ import datetime
 import os
 import pickle
 import shutil
+from collections import Counter
 from random import randrange
 
 import numpy as np
 import tensorflow as tf
+import torch
 import transformers
 import wandb
 from tensorflow.keras.callbacks import EarlyStopping
@@ -83,11 +85,12 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, init_
         lr = init_learning_rate
 
     if multi_class:
-        model.compile(Adam(learning_rate=lr), loss='categorical_crossentropy',
+        # NOTE: adding in gradient clipping
+        model.compile(Adam(learning_rate=lr, clipvalue=0.5), loss='categorical_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
                                tf.keras.metrics.CategoricalAccuracy()])
     else:
-        model.compile(Adam(learning_rate=lr), loss='binary_crossentropy',
+        model.compile(Adam(learning_rate=lr, clipvalue=0.5), loss='binary_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
 
     return model
@@ -137,6 +140,19 @@ def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: 
     return model
 
 
+def get_class_weights(target_list: list):
+    """Return the class weights to tackle skewness in data while training.
+    :param target_list: list indicating class membership for calculating imbalance
+    :return: list of weights
+    """
+    count_dict = Counter(target_list)
+    class_count = [count_dict[i] for i in range(3)]
+    class_weights = len(target_list) / \
+        torch.tensor(class_count, dtype=torch.float)
+    class_weights = class_weights / len(class_weights)
+    return class_weights.tolist()
+
+
 def train_model(multi_nli_train_x: np.ndarray,
                 multi_nli_train_y: np.ndarray,
                 multi_nli_test_x: np.ndarray,
@@ -169,7 +185,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 batch_size: int = 32,
                 learning_rate: float = 1e-6,
                 lr_decay: bool = False,
-                class_weight: bool = True):  # currently just always using this...
+                class_weights: bool = True):  # currently just always using this...
     """
     Train the Transformer model.
 
@@ -209,7 +225,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param batch_size: batch size
     :param learning_rate: learning rate
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
-    :param class_weight: if True, use class weights when fine tuning
+    :param class_weights: if True, use class weights when fine tuning
     :return: fine-tuned Transformer model
     """
     if model_name != 'deepset/covid_bert_base':
@@ -318,7 +334,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   batch_size=batch_size,
                                   validation_data=(multi_nli_test_x, multi_nli_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=get_class_weights(list(multi_nli_train_y)))
         train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
@@ -331,41 +348,30 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   batch_size=batch_size,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=get_class_weights(list(med_nli_train_y)))
         train_hist_list.append(train_history)
 
     # Fine tune on ManConCorpus
     if use_man_con:
-        weight_for_0 = (1 / len(man_con_train_y == 0)) * (len(man_con_train_y)) / 3.0
-        weight_for_1 = (1 / len(man_con_train_y == 1)) * (len(man_con_train_y)) / 3.0
-        weight_for_2 = (1 / len(man_con_train_y == 2)) * (len(man_con_train_y)) / 3.0
-
-        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-
         train_history = model.fit(man_con_train_x,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=class_weight)
+                                  class_weight=get_class_weights(list(man_con_train_y)))
         train_hist_list.append(train_history)
 
     # Fine tune on CORD-19
     if use_cord:
-        weight_for_0 = (1 / len(cord_train_y == 0)) * (len(cord_train_y)) / 3.0
-        weight_for_1 = (1 / len(cord_train_y == 1)) * (len(cord_train_y)) / 3.0
-        weight_for_2 = (1 / len(cord_train_y == 2)) * (len(cord_train_y)) / 3.0
-
-        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-
         train_history = model.fit(cord_train_x,
                                   cord_train_y,
                                   batch_size=batch_size,
                                   validation_data=(cord_test_x, cord_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=class_weight)
+                                  class_weight=get_class_weights(list(cord_train_y)))
         train_hist_list.append(train_history)
 
     return model, train_hist_list
