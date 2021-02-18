@@ -170,8 +170,8 @@ def bluebert_train_model(model,
     elif criterion == 'crossentropy':
         torch_criterion = torch.nn.CrossEntropyLoss()
     if optimizer is None:
-        # NOTE: using clip value
-        optimizer = AdamW(model.parameters(), lr=learning_rate, eps=1e-8, clipvalue=0.5)
+        # NOTE: using clip value, default = 1.0
+        optimizer = AdamW(model.parameters(), lr=learning_rate, eps=1e-8)
 
     # Set the seed value all over the place to make this reproducible.
     np.random.seed(seed)
@@ -236,17 +236,16 @@ def bluebert_train_model(model,
     return model, loss_values
 
 
-def get_class_weights(target_list: list):
+def get_class_weights(target_list: np.array):
     """Return the class weights to tackle skewness in data while training.
-    :param target_list: list indicating class membership for calculating imbalance
+    :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
     :return: list of weights
     """
-    count_dict = Counter(target_list)
-    class_count = [count_dict[i] for i in range(3)]
-    class_weights = len(target_list) / \
-        torch.tensor(class_count, dtype=torch.float)
-    class_weights = class_weights / len(class_weights)
-    return class_weights.tolist()
+    n, n_classes = target_list.shape
+    weights = float(n) / target_list.sum(axis=0)
+    weights /= n_classes  # 3 typically
+
+    return weights
 
 
 # TODO: Use the learning rate
@@ -319,28 +318,31 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     if use_multi_nli:
         multinli_x_train_dataset = ContraDataset(list(multi_nli_train_x), multi_nli_train_y, tokenizer, max_len=512,
                                                  multi_class=multi_class)
-        multinli_x_train_sampler = WeightedRandomSampler(get_class_weights(list(multi_nli_train_y)), multinli_x_train_dataset)
+        multinli_x_train_sampler = WeightedRandomSampler(get_class_weights(multi_nli_train_y), len(multi_nli_train_x))
         multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
                                                  sampler=multinli_x_train_sampler, batch_size=batch_size)
 
     if use_med_nli:
         mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mednli_x_train_sampler = WeightedRandomSampler(get_class_weights(list(med_nli_train_y)), mednli_x_train_dataset)
+        mednli_x_train_sampler = WeightedRandomSampler(get_class_weights(med_nli_train_y), len(med_nli_train_x))
         mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_man_con:
         mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mancon_x_train_sampler = WeightedRandomSampler(get_class_weights(list(man_con_train_y)), mancon_x_train_dataset)
+        ## print(man_con_train_y)
+        mancon_x_train_sampler = WeightedRandomSampler(get_class_weights(man_con_train_y), len(man_con_train_x))
         mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_cord:
         cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
-        cord_x_train_sampler = WeightedRandomSampler(get_class_weights(list(cord_train_y)), cord_x_train_dataset)
+        ## print(cord_train_y)
+        print(get_class_weights(cord_train_y))
+        cord_x_train_sampler = WeightedRandomSampler(get_class_weights(cord_train_y), len(cord_train_x))
         cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=batch_size)
 
     losses_list = []

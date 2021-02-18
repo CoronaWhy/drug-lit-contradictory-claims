@@ -86,11 +86,11 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, init_
 
     if multi_class:
         # NOTE: adding in gradient clipping
-        model.compile(Adam(learning_rate=lr, clipvalue=0.5), loss='categorical_crossentropy',
+        model.compile(Adam(learning_rate=lr, clipvalue=1.0), loss='categorical_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
                                tf.keras.metrics.CategoricalAccuracy()])
     else:
-        model.compile(Adam(learning_rate=lr, clipvalue=0.5), loss='binary_crossentropy',
+        model.compile(Adam(learning_rate=lr, clipvalue=1.0), loss='binary_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
 
     return model
@@ -140,17 +140,28 @@ def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: 
     return model
 
 
-def get_class_weights(target_list: list):
+# def get_class_weights(target_list: list):
+#    """Return the class weights to tackle skewness in data while training.
+#     :param target_list: list indicating class membership for calculating imbalance
+#     :return: list of weights
+#     """
+#     print(target_list)
+#     count_dict = Counter(target_list)
+#     class_count = [count_dict[i] for i in range(3)]
+#     class_weights = len(target_list) / \
+#         torch.tensor(class_count, dtype=torch.float)
+#     class_weights = class_weights / len(class_weights)
+#     return class_weights.tolist()
+
+def get_class_weights(target_list: np.array):
     """Return the class weights to tackle skewness in data while training.
-    :param target_list: list indicating class membership for calculating imbalance
+    :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
     :return: list of weights
     """
-    count_dict = Counter(target_list)
-    class_count = [count_dict[i] for i in range(3)]
-    class_weights = len(target_list) / \
-        torch.tensor(class_count, dtype=torch.float)
-    class_weights = class_weights / len(class_weights)
-    return class_weights.tolist()
+    n, n_classes = target_list.shape
+    weights = float(n) / target_list.sum(axis=0)
+    weights /= n_classes  # 3 typically
+    return weights
 
 
 def train_model(multi_nli_train_x: np.ndarray,
@@ -335,7 +346,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   validation_data=(multi_nli_test_x, multi_nli_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=get_class_weights(list(multi_nli_train_y)))
+                                  class_weight=get_class_weights(multi_nli_train_y))
         train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
@@ -349,7 +360,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=get_class_weights(list(med_nli_train_y)))
+                                  class_weight=get_class_weights(med_nli_train_y))
         train_hist_list.append(train_history)
 
     # Fine tune on ManConCorpus
@@ -360,7 +371,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   validation_data=(man_con_test_x, man_con_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=get_class_weights(list(man_con_train_y)))
+                                  class_weight=get_class_weights(man_con_train_y))
         train_hist_list.append(train_history)
 
     # Fine tune on CORD-19
@@ -371,7 +382,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   validation_data=(cord_test_x, cord_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=get_class_weights(list(cord_train_y)))
+                                  class_weight=get_class_weights(cord_train_y))
         train_hist_list.append(train_history)
 
     return model, train_hist_list

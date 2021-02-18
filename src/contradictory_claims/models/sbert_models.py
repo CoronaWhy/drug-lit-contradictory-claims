@@ -227,8 +227,11 @@ def trainer(model: SBERTPredictor,
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+
     # NOTE: using gradient clipping
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, clipvalue=.5)
+    for p in model.parameters():
+        p.register_hook(lambda grad: torch.clamp(grad, -1.0, 1.0))
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.to(device)
 
     print("------TRAINING STARTS----------")  # noqa: T001
@@ -329,7 +332,8 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
         model_name = "allenai/biomed_roberta_base"
         ri = str(randrange(100000))
         # ToDo: Need to not hard-code these paths
-        model_save_path = f"/scratch/users/dnsosa/biobert_models/biobert_RI{ri}"
+        ###model_save_path = f"/scratch/users/dnsosa/biobert_models/biobert_RI{ri}"
+        model_save_path = f"output/trained_bluebert/jkbiobert{ri}"
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path, exist_ok=True)
         wget.download(
