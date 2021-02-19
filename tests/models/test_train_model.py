@@ -8,10 +8,10 @@ import shutil
 import unittest
 
 import contradictory_claims.models.bluebert_train_model as blue
-from contradictory_claims.models.train_model import build_model, load_model, regular_encode, save_model
 import numpy as np
 import tensorflow as tf
 import torch
+from contradictory_claims.models.train_model import build_model, load_model, regular_encode, save_model
 from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel, AutoTokenizer, TFAutoModel
 
@@ -75,19 +75,23 @@ class TestTrainModel(unittest.TestCase):
         if os.path.isdir(self.out_dir):
             shutil.rmtree(self.out_dir)
 
+
 class TestBlueBertTrain(tf.test.TestCase):
     """Test for training BlueBert model for contradictory-claims."""
+
     def setUp(self) -> None:
-        """Get local version of BlueBert model and sample inputs and lables"""
+        """Get local version of BlueBert model and sample inputs and labels."""
         super(TestBlueBertTrain, self).setUp()
-        self.model, self.tokenizer, self.device = blue.bluebert_create_model("bionlp/bluebert_pubmed_uncased_L-12_H-768_A-12")
-        self.test_inputs = ["This is not a test", "This is a test", "This might be a test", "This is definitely not a test"]
+        self.model, self.tokenizer, self.device = \
+            blue.bluebert_create_model("bionlp/bluebert_pubmed_uncased_L-12_H-768_A-12")
+        self.test_inputs = \
+            ["This is not a test", "This is a test", "This might be a test", "This is definitely not a test"]
         self.test_labels = np.asarray([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0]])
         self.max_len = 10
         self.test_dataset = blue.ContraDataset(self.test_inputs, self.test_labels, self.tokenizer, max_len=self.max_len)
 
     def test_encode(self):
-        """Check first element is returned properly by dataset"""
+        """Check first element is returned properly by dataset."""
         claim, attn_mask, label = self.test_dataset.__getitem__(0)
         expected_claim = self.tokenizer(self.test_inputs[0],
                                         return_token_type_ids=False,
@@ -101,7 +105,7 @@ class TestBlueBertTrain(tf.test.TestCase):
         self.assertAllEqual(label, expected_label)
 
     def test_train(self):
-        """Sanity check to make sure that after each training iteration, weights are changing and we eventually overfit"""
+        """Sanity check to make sure that after each training iteration, weights are changing and we eventually overfit."""
         test_sampler = RandomSampler(self.test_dataset)
         test_dataloader = DataLoader(self.test_dataset, sampler=test_sampler, batch_size=1)
 
@@ -109,7 +113,7 @@ class TestBlueBertTrain(tf.test.TestCase):
         blue.bluebert_train_model(self.model, test_dataloader, device=torch.device("cpu"))
         after = self.model.parameters()
 
-        # Note: using this method in place of self.assertNotAllEqual because while most layers are different, 
+        # Note: using this method in place of self.assertNotAllEqual because while most layers are different,
         # some layers are unchanged after training.
         has_difference = False
         for b, a in zip(before, after):

@@ -5,17 +5,17 @@
 import datetime
 import os
 import time
+from collections import Counter
 
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, Dataset, RandomSampler
+from torch.utils.data import DataLoader, Dataset, RandomSampler, WeightedRandomSampler
 from transformers import (
     AdamW,
     BertModel,
     BertTokenizer,
-    get_linear_schedule_with_warmup
-)
+    get_linear_schedule_with_warmup)
 
 
 class ContraDataset(Dataset):
@@ -44,6 +44,7 @@ class ContraDataset(Dataset):
             # If len > max_len, truncate text upto max_len-8 characters and append the 8-character auxillary input
             texts = [text[:max_len - 8] + text[-8:] if len(text) > max_len else text for text in texts]
 
+        # texts = [text for text in texts if str(text) != 'nan']  # An annoying thing to catch... remove nans.
         enc_di = self.tokenizer.batch_encode_plus(texts,
                                                   return_token_type_ids=False,
                                                   padding='max_length',
@@ -68,10 +69,14 @@ class TorchContraNet(nn.Module):
 
     def forward(self, claim, mask, label=None):
         """Run the model on inputs."""
-        transformer_out = self.transformer(claim,
-                                           token_type_ids=None,
-                                           attention_mask=mask)
-        unnormalized_labels = self.linear(transformer_out.last_hidden_state[:, 0, :])
+        # transformer_out = self.transformer(claim,
+        #                                    token_type_ids=None,
+        #                                    attention_mask=mask)
+        # unnormalized_labels = self.linear(transformer_out.last_hidden_state[:, 0, :])
+        hidden_states, enc_attn_mask = self.transformer(claim,
+                                                        token_type_ids=None,
+                                                        attention_mask=mask)
+        unnormalized_labels = self.linear(hidden_states[:, 0, :])
         y = self.out(unnormalized_labels)
         return y
 
@@ -142,7 +147,9 @@ def bluebert_train_model(model,
                          criterion=None,
                          optimizer=None,
                          epochs: int = 3,
-                         seed: int = 42):
+                         learning_rate: float = 1e-5,
+                         seed: int = 42,
+                         enable_class_weights = True):
     """
     Train the Bluebert Transformer model.
 
@@ -152,7 +159,9 @@ def bluebert_train_model(model,
     :param criterion: training loss criterion
     :param optimizer: training loss optimizer
     :param epochs: number of epochs for training
+    :param learning_rate: learning rate
     :param seed: random seed value for initialization
+    :param enable_class_weights: enable class weights for dealing with imbalance
     :return: fine-tuned Bluebert Transformer model
     """
     # Set training loss criterion and optimizer
@@ -161,7 +170,8 @@ def bluebert_train_model(model,
     elif criterion == 'crossentropy':
         torch_criterion = torch.nn.CrossEntropyLoss()
     if optimizer is None:
-        optimizer = AdamW(model.parameters(), lr=2e-5, eps=1e-8)
+        # NOTE: using clip value, default = 1.0
+        optimizer = AdamW(model.parameters(), lr=learning_rate, eps=1e-8)
 
     # Set the seed value all over the place to make this reproducible.
     np.random.seed(seed)
@@ -197,6 +207,7 @@ def bluebert_train_model(model,
 
             claim = batch[0].to(device)
             mask = batch[1].to(device)
+
             if criterion == 'crossentropy':
                 label = batch[2].to(device=device, dtype=torch.int64)
                 label = torch.max(label, 1)[1]
@@ -225,6 +236,19 @@ def bluebert_train_model(model,
     return model, loss_values
 
 
+def get_class_weights(target_list: np.array):
+    """Return the class weights to tackle skewness in data while training.
+    :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
+    :return: list of weights
+    """
+    n, n_classes = target_list.shape
+    weights = float(n) / target_list.sum(axis=0)
+    weights /= n_classes  # 3 typically
+
+    return weights
+
+
+# TODO: Use the learning rate
 def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 multi_nli_train_y: np.ndarray,
                                 multi_nli_test_x: np.ndarray,
@@ -242,14 +266,16 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 cord_test_x: np.ndarray,
                                 cord_test_y: np.ndarray,
                                 bluebert_pretrained_path: str,
-                                multi_class: bool = True,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
                                 use_cord: bool = True,
                                 epochs: int = 3,
                                 batch_size: int = 32,
-                                criterion: str = None):
+                                criterion: str = None,
+                                multi_class: bool = True,
+                                learning_rate: float = 1e-5,
+                                enable_class_weights: bool = True):
     """
     Create and train the Bluebert Transformer model.
 
@@ -279,6 +305,8 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param epochs: number of epochs for training
     :param batch_size: batch size for fine-tuning
     :param criterion: training loss criterion
+    :param learning_rate: learning rate
+    :param enable_class_weights: enable class weighting to deal with the imbalance
     :return: fine-tuned Bluebert Transformer model
     :return device: CPU vs GPU definition for torch
     """
@@ -286,31 +314,35 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
     # Package data into a DataLoader
+    # TODO: class weights are always on
     if use_multi_nli:
         multinli_x_train_dataset = ContraDataset(list(multi_nli_train_x), multi_nli_train_y, tokenizer, max_len=512,
                                                  multi_class=multi_class)
-        multinli_x_train_sampler = RandomSampler(multinli_x_train_dataset)
+        multinli_x_train_sampler = WeightedRandomSampler(get_class_weights(multi_nli_train_y), len(multi_nli_train_x))
         multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
                                                  sampler=multinli_x_train_sampler, batch_size=batch_size)
 
     if use_med_nli:
         mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mednli_x_train_sampler = RandomSampler(mednli_x_train_dataset)
+        mednli_x_train_sampler = WeightedRandomSampler(get_class_weights(med_nli_train_y), len(med_nli_train_x))
         mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_man_con:
         mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
                                                multi_class=multi_class)
-        mancon_x_train_sampler = RandomSampler(mancon_x_train_dataset)
+        ## print(man_con_train_y)
+        mancon_x_train_sampler = WeightedRandomSampler(get_class_weights(man_con_train_y), len(man_con_train_x))
         mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler,
                                                batch_size=batch_size)
 
     if use_cord:
         cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
                                              multi_class=multi_class)
-        cord_x_train_sampler = RandomSampler(cord_x_train_dataset)
+        ## print(cord_train_y)
+        print(get_class_weights(cord_train_y))
+        cord_x_train_sampler = WeightedRandomSampler(get_class_weights(cord_train_y), len(cord_train_x))
         cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=batch_size)
 
     losses_list = []
@@ -318,28 +350,28 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     # Fine tune model on MultiNLI
     if use_multi_nli:
         model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
         model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
         model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
     # Fine tune model on CORD
     if use_cord:
         model, losses = bluebert_train_model(model, cord_x_train_dataloader, device, epochs=epochs,
-                                             criterion=criterion)
+                                             learning_rate=learning_rate, criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 

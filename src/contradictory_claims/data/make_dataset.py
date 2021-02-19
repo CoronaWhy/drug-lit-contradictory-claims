@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os
 import xml.etree.ElementTree as ET  # TODO: Fix error # noqa: S405, N817
 from itertools import combinations
 from typing import List
@@ -30,7 +31,7 @@ def replace_drug_with_spl_token(text: List[str], drug_names: List[str] = None):
 
 
 def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None, multi_class: bool = True,
-                   repl_drug_with_spl_tkn: bool = False):
+                   repl_drug_with_spl_tkn: bool = False, downsample: float = 0.1):
     """
     Load MultiNLI data for training.
 
@@ -40,10 +41,12 @@ def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None
         and data is prepared for binary classification.
     :param drug_names: list of drug names to replace
     :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param downsample: fraction to downsample MultiNLI to facilitate training
     :return: MultiNLI sentence pairs and labels for training and test sets, respectively
     """
-    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False)
-    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False)
+    # If not drop NaNs in sentences now, could lead to problems when encoding
+    multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
+    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
 
     # Map labels to numerical (categorical) values
     multinli_train_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
@@ -202,12 +205,13 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: Lis
     return x_train, y_train, x_test, y_test
 
 
-def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
+def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_save_path: str):
     """
     Create sentence pairs dataset from the original xml ManCon Corpus.
 
     :param xml_path: path to xml corpus
     :param save_path: path to save the sentence pairs dataset
+    :param eval_data_save_path: path to save the evaluation version of manconcorpus (for benchmarking)
     """
     xtree = ET.parse(xml_path)  # TODO: Fix error # noqa: S314
     xroot = xtree.getroot()
@@ -220,6 +224,12 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
                                                           'assertion': claim.attrib.get('ASSERTION'),
                                                           'question': claim.attrib.get('QUESTION')},
                                                          ignore_index=True)
+
+    # Going to output a version of this to use as evaluation data for benchmarking...
+    mcc_eval_data = manconcorpus_data.rename(columns={"question": "text1", "claim": "text2", "assertion": "annotation"})
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('YS', 'entailment')
+    mcc_eval_data["annotation"] = mcc_eval_data["annotation"].str.replace('NO', 'contradiction')
+    mcc_eval_data.to_csv(eval_data_save_path, sep='\t', index=False)
     # print(len(manconcorpus_data))
 
     questions = list(set(manconcorpus_data.question))
@@ -265,9 +275,12 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str):
     # print(len(neu))
     # print(len(transfer_data))
 
-    transfer_data.to_csv(save_path, sep='\t', index=False)
+    # Ensuring the file doesn't already exist to avoid conflicts from multiple jobs creating this file.
+    if not os.path.exists(save_path):
+        transfer_data.to_csv(save_path, sep='\t', index=False)
 
-    return
+    # Might as well also return this data, although it gets saved to a TSV too.
+    return mcc_eval_data
 
 
 def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
@@ -356,6 +369,7 @@ def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
 
     return drug_names, virus_names
 
+
 def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
     """Convert Data recieved as a single format by preprocessing multi_nli, med_nli or mancon.
 
@@ -382,7 +396,6 @@ def remove_tokens_get_sentence_sbert(x: np.ndarray, y: np.ndarray):
 
 def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = None, multi_class: bool = True,
                     repl_drug_with_spl_tkn: bool = False):
-  
     """
     Load CORD-19 annotated claim pairs for training.
 
@@ -406,6 +419,84 @@ def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = N
     x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
         '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
         stratify=cord_data['label'])
+
+    if multi_class:
+        x_train = x_train.to_numpy()  # TODO: need to double check this is sufficient for not having TF complain
+        x_test = x_test.to_numpy()
+
+        # Reformat to one-hot categorical variable (3 columns)
+        y_train = np_utils.to_categorical(y_train_tmp)
+        y_test = np_utils.to_categorical(y_test_tmp)
+    else:
+        # Add the category info (CON, ENT, NEU) as auxillary text at the end
+        x_train_1 = x_train + '[SEP]' + 'CON'
+        x_train_2 = x_train + '[SEP]' + 'ENT'
+        x_train_3 = x_train + '[SEP]' + 'NEU'
+        x_train = x_train_1.append(x_train_2)
+        x_train = x_train.append(x_train_3)
+        x_train = x_train.to_numpy()
+        x_test_1 = x_test + '[SEP]' + 'CON'
+        x_test_2 = x_test + '[SEP]' + 'ENT'
+        x_test_3 = x_test + '[SEP]' + 'NEU'
+        x_test = x_test_1.append(x_test_2)
+        x_test = x_test.append(x_test_3)
+        x_test = x_test.to_numpy()
+
+        # Reformat to binary variable
+        y_train_1 = [1 if label == 2 else 0 for label in y_train_tmp]
+        y_train_2 = [1 if label == 1 else 0 for label in y_train_tmp]
+        y_train_3 = [1 if label == 0 else 0 for label in y_train_tmp]
+        y_train = y_train_1 + y_train_2 + y_train_3
+        y_train = np.array(y_train)
+        y_test_1 = [1 if label == 2 else 0 for label in y_test_tmp]
+        y_test_2 = [1 if label == 1 else 0 for label in y_test_tmp]
+        y_test_3 = [1 if label == 0 else 0 for label in y_test_tmp]
+        y_test = y_test_1 + y_test_2 + y_test_3
+        y_test = np.array(y_test)
+
+    return x_train, y_train, x_test, y_test
+
+
+def load_cord_pairs_v2(data_path: str, train_sheet: str, dev_sheet: str, multi_class: bool = True,
+                       repl_drug_with_spl_tkn: bool = False, drug_names: List[str] = None):
+    """
+    Load CORD-19 annotated claim pairs for training.
+
+    :param data_path: path to CORD training data
+    :param train_sheet: name of the Excel sheet containing the train set
+    :param dev_sheet: name of the Excel sheet containing the dev set
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+        and data is prepared for binary classification.
+    :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param drug_names: list of drug names to replace
+    :return: CORD-19 sentence pairs and labels for training and test sets, respectively
+    """
+    cord_data_train = read_data_from_excel(data_path, train_sheet)
+    cord_data_dev = read_data_from_excel(data_path, dev_sheet)
+
+    cord_data_train['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                                label in cord_data_train.annotation]
+    print(f"Number of contradiction pairs: {len(cord_data_train[cord_data_train.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(cord_data_train[cord_data_train.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(cord_data_train[cord_data_train.label == 0])}")  # noqa: T001
+
+    cord_data_dev['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
+                              label in cord_data_dev.annotation]
+    print(f"Number of contradiction pairs: {len(cord_data_dev[cord_data_dev.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(cord_data_dev[cord_data_dev.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(cord_data_dev[cord_data_dev.label == 0])}")  # noqa: T001
+
+    # Insert the CLS and SEP tokens
+    # x_train, x_test, y_train_tmp, y_test_tmp = train_test_split(
+    #    '[CLS]' + cord_data.text1 + '[SEP]' + cord_data.text2, cord_data['label'], test_size=0.2,
+    #    stratify=cord_data['label'])
+
+    x_train = '[CLS]' + cord_data_train.text1 + '[SEP]' + cord_data_train.text2
+    y_train_tmp = cord_data_train.label
+
+    x_test = '[CLS]' + cord_data_dev.text1 + '[SEP]' + cord_data_dev.text2
+    y_test_tmp = cord_data_dev.label
+
     if multi_class:
         # Reformat to one-hot categorical variable (3 columns)
         y_train = np_utils.to_categorical(y_train_tmp)
@@ -435,7 +526,7 @@ def load_cord_pairs(data_path: str, active_sheet: str, drug_names: List[str] = N
         y_test = y_test_1 + y_test_2 + y_test_3
         y_test = np.array(y_test)
 
-    # Replace drug name occurence with special token
+    # Replace drug name occurrence with special token
     if repl_drug_with_spl_tkn:
         x_train = replace_drug_with_spl_token(x_train, drug_names)
         x_test = replace_drug_with_spl_token(x_test, drug_names)

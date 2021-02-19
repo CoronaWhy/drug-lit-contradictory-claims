@@ -6,6 +6,8 @@ import math
 import os
 import pickle
 import shutil
+import ssl
+from random import randrange
 
 import numpy as np
 import torch
@@ -24,6 +26,8 @@ from transformers import AutoModel, AutoTokenizer
 from .dataloader import ClassifierDataset, NLIDataReader, collate_fn, multi_acc
 from .dataloader import format_create
 from ..data.make_dataset import remove_tokens_get_sentence_sbert
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class SBERTPredictor(SentenceTransformer):
@@ -223,6 +227,10 @@ def trainer(model: SBERTPredictor,
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+
+    # NOTE: using gradient clipping
+    for p in model.parameters():
+        p.register_hook(lambda grad: torch.clamp(grad, -1.0, 1.0))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.to(device)
 
@@ -314,15 +322,20 @@ def build_sbert_model(model_name: str, logistic_model: bool = True):
         model_name = "deepset/covid_bert_base"
         covid_bert_path = "covid_bert_path"
         model_save_path = covid_bert_path
-        os.makedirs(model_save_path, exist_ok=True)
+        if not os.path.exists(model_save_path):
+            os.makedirs(model_save_path, exist_ok=True)
         wget.download(
             "https://cdn.huggingface.co/deepset/covid_bert_base/vocab.txt",
             out=f"{model_save_path}/")  # download the vocab file
 
     else:
         model_name = "allenai/biomed_roberta_base"
-        model_save_path = "biobert_path"
-        os.makedirs(model_save_path, exist_ok=True)
+        ri = str(randrange(100000))
+        # ToDo: Need to not hard-code these paths
+        ###model_save_path = f"/scratch/users/dnsosa/biobert_models/biobert_RI{ri}"
+        model_save_path = f"output/trained_bluebert/jkbiobert{ri}"
+        if not os.path.exists(model_save_path):
+            os.makedirs(model_save_path, exist_ok=True)
         wget.download(
             "https://cdn.huggingface.co/allenai/biomed_roberta_base/merges.txt",
             out=f"{model_save_path}/")
@@ -479,7 +492,7 @@ def train_sbert_model(sbert_model,
                 embedding_epochs=embedding_epochs,
                 enable_class_weights=enable_class_weights)
 
-    # return sbert_model
+    return sbert_model
 
 
 def save_sbert_model(model: SBERTPredictor,

@@ -6,9 +6,12 @@ import datetime
 import os
 import pickle
 import shutil
+from collections import Counter
+from random import randrange
 
 import numpy as np
 import tensorflow as tf
+import torch
 import transformers
 import wandb
 from tensorflow.keras.callbacks import EarlyStopping
@@ -48,7 +51,7 @@ def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: i
     return np.array(enc_di['input_ids'])
 
 
-def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_decay: bool = False):  # noqa: D205
+def build_model(transformer, max_len: int = 512, multi_class: bool = True, init_learning_rate: float = 1e-6, lr_decay: bool = False):  # noqa: D205
     """
     Build an end-to-end Transformer model. Requires a transformer of type TFAutoBert.
     https://www.kaggle.com/xhlulu/jigsaw-tpu-distilbert-with-huggingface-and-keras
@@ -57,6 +60,7 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_de
     :param max_len: maximum length of encoded sequence
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
+    :param init_learning_rate: initial learning rate
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
     :return: Constructed Transformer model
     """
@@ -78,14 +82,15 @@ def build_model(transformer, max_len: int = 512, multi_class: bool = True, lr_de
                              end_learning_rate=1e-6,
                              power=1)
     else:
-        lr = 1e-6
+        lr = init_learning_rate
 
     if multi_class:
-        model.compile(Adam(learning_rate=lr), loss='categorical_crossentropy',
+        # NOTE: adding in gradient clipping
+        model.compile(Adam(learning_rate=lr, clipvalue=1.0), loss='categorical_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(),
                                tf.keras.metrics.CategoricalAccuracy()])
     else:
-        model.compile(Adam(learning_rate=lr), loss='binary_crossentropy',
+        model.compile(Adam(learning_rate=lr, clipvalue=1.0), loss='binary_crossentropy',
                       metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), 'accuracy'])
 
     return model
@@ -135,6 +140,32 @@ def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: 
     return model
 
 
+# def get_class_weights(target_list: list):
+#    """Return the class weights to tackle skewness in data while training.
+#     :param target_list: list indicating class membership for calculating imbalance
+#     :return: list of weights
+#     """
+#     print(target_list)
+#     count_dict = Counter(target_list)
+#     class_count = [count_dict[i] for i in range(3)]
+#     class_weights = len(target_list) / \
+#         torch.tensor(class_count, dtype=torch.float)
+#     class_weights = class_weights / len(class_weights)
+#     return class_weights.tolist()
+
+def get_class_weights(target_list: np.array):
+    """Return the class weights to tackle skewness in data while training.
+    :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
+    :return: list of weights
+    """
+    n, n_classes = target_list.shape
+    weights = float(n) / target_list.sum(axis=0)
+    weights /= n_classes  # 3 typically
+    print(weights)
+    weights_dict = dict(zip([0, 1, 2], weights))
+    return weights_dict
+
+
 def train_model(multi_nli_train_x: np.ndarray,
                 multi_nli_train_y: np.ndarray,
                 multi_nli_test_x: np.ndarray,
@@ -151,8 +182,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                 cord_train_y: np.ndarray,
                 cord_test_x: np.ndarray,
                 cord_test_y: np.ndarray,
-                drug_names: list,
-                virus_names: list,
+                drug_names: list,  # not using currently...
+                virus_names: list,  # not using currently...
                 model_name: str,
                 multi_class: bool = True,
                 continue_fine_tuning: bool = False,
@@ -165,8 +196,9 @@ def train_model(multi_nli_train_x: np.ndarray,
                 epochs: int = 3,
                 max_len: int = 512,
                 batch_size: int = 32,
+                learning_rate: float = 1e-6,
                 lr_decay: bool = False,
-                class_weight: bool = True):
+                class_weights: bool = True):  # currently just always using this...
     """
     Train the Transformer model.
 
@@ -204,8 +236,9 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
+    :param learning_rate: learning rate
     :param lr_decay: if True, use a learning rate decay schedule. If False, use a constant learning rate.
-    :param class_weight: if True, use class weights when fine tuning
+    :param class_weights: if True, use class weights when fine tuning
     :return: fine-tuned Transformer model
     """
     if model_name != 'deepset/covid_bert_base':
@@ -257,33 +290,42 @@ def train_model(multi_nli_train_x: np.ndarray,
                        mode='max',
                        restore_best_weights=True)
 
-    strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    ###strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    now = datetime.datetime.now()
     if continue_fine_tuning:
-        with strategy.scope():
-            model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
-        # batch_size = 2 * strategy.num_replicas_in_sync
-        batch_size = batch_size
+        ###with strategy.scope():
+        model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
+        #batch_size = 2 * strategy.num_replicas_in_sync
+
     else:
         if model_name == 'deepset/covid_bert_base':
             model = AutoModelWithLMHead.from_pretrained("deepset/covid_bert_base")
             model.resize_token_embeddings(len(tokenizer))
-            os.makedirs("covid_bert_base")
-            model.save_pretrained("covid_bert_base")
-            with strategy.scope():
-                model = TFAutoModel.from_pretrained("covid_bert_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
-            shutil.rmtree("covid_bert_base")
+            ri = randrange(1000)
+            tmp_dir = f"covid_bert_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}_{ri}"
+            if os.path.exists(tmp_dir):
+                raise Exception("Directory conflict when saving model temporarily!")
+            os.makedirs(tmp_dir)
+            model.save_pretrained(tmp_dir)
+            ###with strategy.scope():
+            model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)  #indented
+            model = build_model(model, init_learning_rate=learning_rate)  #indented
+            shutil.rmtree(tmp_dir)
         else:
+            now = datetime.datetime.now()
             model = AutoModel.from_pretrained("allenai/biomed_roberta_base")
             model.resize_token_embeddings(len(tokenizer))
-            os.makedirs("biomed_roberta_base")
-            model.save_pretrained("biomed_roberta_base")
-            with strategy.scope():
-                model = TFAutoModel.from_pretrained("biomed_roberta_base", from_pt=True)
-                model = build_model(model, multi_class=multi_class, lr_decay=lr_decay)
-            shutil.rmtree("biomed_roberta_base")
-        # batch_size = 2 * strategy.num_replicas_in_sync
-        batch_size = batch_size
+            ri = randrange(1000)
+            tmp_dir = f"biomed_roberta_base-{now.day}_{now.month}_{now.year}-{now.hour}:{now.minute}:{now.second}_{ri}"
+            if os.path.exists(tmp_dir):
+                raise Exception("Directory conflict when saving model temporarily!")
+            os.makedirs(tmp_dir)
+            model.save_pretrained(tmp_dir)
+            ###with strategy.scope():  #next 2 lines were indented before
+            model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
+            model = build_model(model, multi_class=multi_class, init_learning_rate=learning_rate, lr_decay=lr_decay)
+            shutil.rmtree(tmp_dir)
+        #batch_size = 2 * strategy.num_replicas_in_sync
 
     print(model.summary())  # noqa: T001
 
@@ -294,6 +336,9 @@ def train_model(multi_nli_train_x: np.ndarray,
         print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
+    wandb_dir = "./wandb_artifacts"
+    if not os.path.exists(wandb_dir):
+        os.makedirs(wandb_dir)
     wandb.init(dir="./wandb_artifacts")
 
     train_hist_list = []
@@ -305,7 +350,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   batch_size=batch_size,
                                   validation_data=(multi_nli_test_x, multi_nli_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=get_class_weights(multi_nli_train_y))
         train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
@@ -318,41 +364,30 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   batch_size=batch_size,
                                   validation_data=(med_nli_test_x, med_nli_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs)
+                                  epochs=epochs,
+                                  class_weight=get_class_weights(med_nli_train_y))
         train_hist_list.append(train_history)
 
     # Fine tune on ManConCorpus
     if use_man_con:
-        weight_for_0 = (1 / len(man_con_train_y == 0)) * (len(man_con_train_y)) / 3.0
-        weight_for_1 = (1 / len(man_con_train_y == 1)) * (len(man_con_train_y)) / 3.0
-        weight_for_2 = (1 / len(man_con_train_y == 2)) * (len(man_con_train_y)) / 3.0
-
-        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-
         train_history = model.fit(man_con_train_x,
                                   man_con_train_y,
                                   batch_size=batch_size,
                                   validation_data=(man_con_test_x, man_con_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=class_weight)
+                                  class_weight=get_class_weights(man_con_train_y))
         train_hist_list.append(train_history)
 
     # Fine tune on CORD-19
     if use_cord:
-        weight_for_0 = (1 / len(cord_train_y == 0)) * (len(cord_train_y)) / 3.0
-        weight_for_1 = (1 / len(cord_train_y == 1)) * (len(cord_train_y)) / 3.0
-        weight_for_2 = (1 / len(cord_train_y == 2)) * (len(cord_train_y)) / 3.0
-
-        class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2}
-
         train_history = model.fit(cord_train_x,
                                   cord_train_y,
                                   batch_size=batch_size,
                                   validation_data=(cord_test_x, cord_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=class_weight)
+                                  class_weight=get_class_weights(cord_train_y))
         train_hist_list.append(train_history)
 
     return model, train_hist_list
