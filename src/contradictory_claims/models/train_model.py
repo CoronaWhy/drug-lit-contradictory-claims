@@ -161,7 +161,9 @@ def get_class_weights(target_list: np.array):
     n, n_classes = target_list.shape
     weights = float(n) / target_list.sum(axis=0)
     weights /= n_classes  # 3 typically
-    return weights
+    print(weights)
+    weights_dict = dict(zip([0, 1, 2], weights))
+    return weights_dict
 
 
 def train_model(multi_nli_train_x: np.ndarray,
@@ -288,11 +290,11 @@ def train_model(multi_nli_train_x: np.ndarray,
                        mode='max',
                        restore_best_weights=True)
 
-    strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    ###strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     now = datetime.datetime.now()
     if continue_fine_tuning:
-        with strategy.scope():
-            model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
+        ###with strategy.scope():
+        model = load_model(model_continue_sigmoid_path, model_continue_transformer_path, multi_class=multi_class)
         #batch_size = 2 * strategy.num_replicas_in_sync
 
     else:
@@ -305,9 +307,9 @@ def train_model(multi_nli_train_x: np.ndarray,
                 raise Exception("Directory conflict when saving model temporarily!")
             os.makedirs(tmp_dir)
             model.save_pretrained(tmp_dir)
-            with strategy.scope():
-                model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
-                model = build_model(model, init_learning_rate=learning_rate)
+            ###with strategy.scope():
+            model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)  #indented
+            model = build_model(model, init_learning_rate=learning_rate)  #indented
             shutil.rmtree(tmp_dir)
         else:
             now = datetime.datetime.now()
@@ -319,9 +321,9 @@ def train_model(multi_nli_train_x: np.ndarray,
                 raise Exception("Directory conflict when saving model temporarily!")
             os.makedirs(tmp_dir)
             model.save_pretrained(tmp_dir)
-            with strategy.scope():
-                model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
-                model = build_model(model, multi_class=multi_class, init_learning_rate=learning_rate, lr_decay=lr_decay)
+            ###with strategy.scope():  #next 2 lines were indented before
+            model = TFAutoModel.from_pretrained(tmp_dir, from_pt=True)
+            model = build_model(model, multi_class=multi_class, init_learning_rate=learning_rate, lr_decay=lr_decay)
             shutil.rmtree(tmp_dir)
         #batch_size = 2 * strategy.num_replicas_in_sync
 
@@ -334,6 +336,9 @@ def train_model(multi_nli_train_x: np.ndarray,
         print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
+    wandb_dir = "./wandb_artifacts"
+    if not os.path.exists(wandb_dir):
+        os.makedirs(wandb_dir)
     wandb.init(dir="./wandb_artifacts")
 
     train_hist_list = []
