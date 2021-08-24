@@ -46,7 +46,7 @@ def load_multi_nli(train_path: str, test_path: str, drug_names: List[str] = None
     """
     # If not drop NaNs in sentences now, could lead to problems when encoding
     multinli_train_data = pd.read_csv(train_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
-    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=downsample)
+    multinli_test_data = pd.read_csv(test_path, sep='\t', error_bad_lines=False).dropna(subset=["sentence1", "sentence2"]).sample(frac=1)
 
     # Map labels to numerical (categorical) values
     multinli_train_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
@@ -286,7 +286,8 @@ def create_mancon_sent_pairs_from_xml(xml_path: str, save_path: str, eval_data_s
 def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
                                        drug_names: List[str] = None,
                                        multi_class: bool = True,  # noqa: D205,D400
-                                       repl_drug_with_spl_tkn: bool = False):
+                                       repl_drug_with_spl_tkn: bool = False,
+                                       downsample_neutrals: bool = True):
     """
     Load ManConCorpus data.
 
@@ -294,15 +295,20 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
     columns: label, guid, text_a (sentence 1), and text_b (sentence 2).
 
     :param mancon_sent_pair_path: path to ManCon sentence pair file
-    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxillary input
+    :param multi_class: if True, data is prepared for multiclass classification. If False, implies auxiliary input
         and data is prepared for binary classification.
     :param drug_names: list of drug names to replace
     :param repl_drug_with_spl_tkn: if True, replace drug names with a special token
+    :param downsample_neutrals: if True, downsample all classes to the minimum class
     :return: ManConCorpus sentence pairs and labels for training and test sets, respectively
     """
     mancon_data = pd.read_csv(mancon_sent_pair_path, sep='\t')
     mancon_data['label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
                             label in mancon_data.label]
+    if downsample_neutrals:
+        g = mancon_data.groupby('label', group_keys=False)
+        mancon_data = pd.DataFrame(g.apply(lambda x: x.sample(g.size().min()))).reset_index(drop=True)
+
     print(f"Number of contradiction pairs: {len(mancon_data[mancon_data.label == 2])}")  # noqa: T001
     print(f"Number of entailment pairs: {len(mancon_data[mancon_data.label == 1])}")  # noqa: T001
     print(f"Number of neutral pairs: {len(mancon_data[mancon_data.label == 0])}")  # noqa: T001

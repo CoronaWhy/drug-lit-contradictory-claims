@@ -43,7 +43,7 @@ def regular_encode(texts: list, tokenizer: transformers.AutoTokenizer, maxlen: i
     enc_di = tokenizer.batch_encode_plus(texts,
                                          return_attention_mask=False,
                                          return_token_type_ids=False,
-                                         pad_to_max_length=True,
+                                         padding='max_length',
                                          # sep_token='[SEP]',
                                          max_length=maxlen,
                                          truncation=True)  # Is this what we want?

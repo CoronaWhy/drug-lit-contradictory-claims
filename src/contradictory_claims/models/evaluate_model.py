@@ -395,9 +395,9 @@ def create_report(df: pd.DataFrame,
         # con/ent/neu
         binarized_annotations = label_binarize(
             df.annotation, classes=[
-                "contradiction", "entailment", "neutral"])
+                "neutral", "entailment", "contradiction"])
         predicted_annotations = np.array(
-            df[['predicted_con', 'predicted_ent', 'predicted_neu']])
+            df[['predicted_neu', 'predicted_ent', 'predicted_con']])
 
         # Compute ROC curve and ROC area for each class
         fpr = {}
