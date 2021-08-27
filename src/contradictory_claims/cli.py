@@ -35,7 +35,6 @@ from .models.train_model import save_model, train_model
 @click.option('--sbert/--no-sbert', 'sbert', default=False)
 @click.option('--sbert-logistic-regression/--no-sbert-logistic-regression', 'logistic_model', default=True)
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
-@click.option('--multinli-fraction', 'multinli_fraction', default=0.1)
 @click.option('--mednli/--no-mednli', 'use_mednli', default=False)
 @click.option('--mancon/--no-mancon', 'use_mancon', default=False)
 @click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
@@ -49,7 +48,7 @@ from .models.train_model import save_model, train_model
 @click.option('--epochs', 'epochs', default=3)
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
-def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli, multinli_fraction,
+def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli,
          use_mednli, use_mancon, use_roamdev, extract_claims, mancon_report, report, multi_class, cord_version, learning_rate,
          batch_size, epochs, class_weights, aux_input):
     """Run main function."""
@@ -96,8 +95,10 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
     # Data loads. NOTE: currently, it is expected that all data is found in an input/ directory with the proper
     # directory structure and file names as follows.
     # MultiNLI paths
-    multinli_train_path = os.path.join(root_dir, 'input/multinli/multinli_1.0_train.txt')
-    multinli_test_path = os.path.join(root_dir, 'input/multinli-dev/multinli_1.0_dev_matched.txt')
+    ## multinli_train_path = os.path.join(root_dir, 'input/multinli/multinli_1.0_train.txt')
+    ## multinli_test_path = os.path.join(root_dir, 'input/multinli-dev/multinli_1.0_dev_matched.txt')
+    multinli_train_path = os.path.join(root_dir, 'input/multinli/multinli_1.0_train_DOWNSAMPLED.txt')
+    multinli_test_path = os.path.join(root_dir, 'input/multinli-dev/multinli_1.0_dev_DOWNSAMPLED.txt')
 
     # MedNLI paths
     mednli_train_path = os.path.join(root_dir, 'input/mednli/mli_train_v1.jsonl')
@@ -183,8 +184,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
         # Load BERT train and test data
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
         multi_nli_train_x, multi_nli_train_y, multi_nli_test_x, multi_nli_test_y = \
-            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names,
-                           downsample=multinli_fraction)
+            load_multi_nli(multinli_train_path, multinli_test_path, multi_class=multi_class, drug_names=drug_names)
         med_nli_train_x, med_nli_train_y, med_nli_test_x, med_nli_test_y = \
             load_med_nli(mednli_train_path, mednli_dev_path, mednli_test_path, multi_class=multi_class,
                          drug_names=drug_names)
