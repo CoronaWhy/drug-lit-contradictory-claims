@@ -207,10 +207,10 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
         # CONCLUSION: 0 = neutral, 1 = entailment, 2 = contradiction
 
         # COMMENT THIS OUT LATER
-        cord_train_x = cord_train_x[0:50]
-        cord_train_y = cord_train_y[0:50]
-        cord_test_x = cord_test_x[0:50]
-        cord_test_y = cord_test_y[0:50]
+        #cord_train_x = cord_train_x[0:50]
+        #cord_train_y = cord_train_y[0:50]
+        #cord_test_x = cord_test_x[0:50]
+        #cord_test_y = cord_test_y[0:50]
 
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
@@ -413,6 +413,26 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
             # transformer_dir = os.path.join(root_dir, trained_model_out_dir)
             # pickle_file = os.path.join(transformer_dir, 'sigmoid.pickle')
             # trained_model = load_model(pickle_file, transformer_dir, multi_class=multi_class)
+
+            # trained_model, train_history = train_model(multi_nli_train_x, multi_nli_train_y,
+            #                                           multi_nli_test_x, multi_nli_test_y,
+            #                                           med_nli_train_x, med_nli_train_y,
+            #                                           med_nli_test_x, med_nli_test_y,
+            #                                           man_con_train_x, man_con_train_y,
+            #                                           man_con_test_x, man_con_test_y,
+            #                                           cord_train_x, cord_train_y,
+            #                                           cord_test_x, cord_test_y,
+            #                                           drug_names, virus_names,
+            #                                           model_name="allenai/biomed_roberta_base",
+            #                                           use_multi_nli=use_multinli,
+            #                                           use_med_nli=use_mednli,
+            #                                           use_man_con=use_mancon,
+            #                                           use_cord=use_roamdev,
+            #                                           epochs=epochs,
+            #                                           batch_size=batch_size,  # class_weights, aux_input,
+            #                                           learning_rate=learning_rate,
+            #                                           multi_class=multi_class)
+
         if bluebert:
             pass
             # bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)

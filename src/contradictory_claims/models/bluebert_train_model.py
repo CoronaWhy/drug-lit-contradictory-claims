@@ -258,9 +258,8 @@ def bluebert_train_model(model,
             optimizer.step()
             scheduler.step()
 
-            wandb.log({"loss": loss})
+            wandb.log({"Loss": loss})
             # TODO: log other metrics like accuracy and recall
-            # TODO: validation not being used yet
 
         avg_train_loss = total_loss / len(dataloader)
 
