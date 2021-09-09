@@ -16,6 +16,7 @@ from transformers import (
     BertModel,
     BertTokenizer,
     get_linear_schedule_with_warmup)
+import wandb
 
 
 class ContraDataset(Dataset):
@@ -32,7 +33,7 @@ class ContraDataset(Dataset):
     def __getitem__(self, index):
         """Get data item from index."""
         # assert index < len(self.labels)
-        return (self.claims[index], self.att_mask[index], torch.tensor(self.labels[index]))
+        return self.claims[index], self.att_mask[index], torch.tensor(self.labels[index])
 
     def __len__(self):
         """Get length of data."""
@@ -142,8 +143,14 @@ def bluebert_create_model(bluebert_pretrained_path: str, multi_class: bool = Tru
 
 
 def bluebert_train_model(model,
-                         dataloader,
+                         train_data_x,
+                         train_data_y,
+                         val_data_x,
+                         val_data_y,
+                         tokenizer,
                          device,
+                         batch_size: int = 2,
+                         multi_class: bool = True,
                          criterion=None,
                          optimizer=None,
                          epochs: int = 3,
@@ -154,9 +161,16 @@ def bluebert_train_model(model,
     Train the Bluebert Transformer model.
 
     :param model: Bluebert model definition
-    :param dataloader: training data packaged into a dataloader
+    :param train_data_x: training data sentence pairs
+    :param train_data_y: training data sentence labels
+    :param val_data_x: val data sentence pairs
+    :param val_data_y: val data sentence labels
+    :param tokenizer: sentence encoding tokenizer
     :param device: CPU vs GPU definition for torch
-    :param criterion: training loss criterion
+    :param batch_size: batch size for fine-tuning
+    :param multi_class: if True, final layer is multiclass so softmax is used. If false, final layer
+        is sigmoid and binary crossentropy is evaluated
+    :param criterion: training loss criterion (cross-entropy vs minimum squared error)
     :param optimizer: training loss optimizer
     :param epochs: number of epochs for training
     :param learning_rate: learning rate
@@ -164,6 +178,15 @@ def bluebert_train_model(model,
     :param enable_class_weights: enable class weights for dealing with imbalance
     :return: fine-tuned Bluebert Transformer model
     """
+    # Process the data
+    dataset = ContraDataset(list(train_data_x),
+                            train_data_y,
+                            tokenizer,
+                            max_len=512,
+                            multi_class=multi_class)
+    sampler = WeightedRandomSampler(get_class_weights(train_data_y), len(train_data_x))
+    dataloader = DataLoader(dataset, sampler=sampler, batch_size=batch_size)
+
     # Set training loss criterion and optimizer
     if criterion is None:
         torch_criterion = torch.nn.MSELoss(reduction='sum')
@@ -186,6 +209,14 @@ def bluebert_train_model(model,
                                                 num_warmup_steps=0,
                                                 num_training_steps=total_steps)
 
+    # Initialize WandB for tracking the training progress
+    wandb_dir = "./wandb_artifacts"
+    if not os.path.exists(wandb_dir):
+        os.makedirs(wandb_dir)
+    wandb.init(dir="./wandb_artifacts")
+
+    wandb.watch(model, log_freq=100, log="all")
+
     # Training loop
     for epoch in range(epochs):
         print("")  # noqa: T001
@@ -197,6 +228,8 @@ def bluebert_train_model(model,
 
         # Reset the total loss for this epoch.
         total_loss = 0
+        total_val_loss = 0
+        val_correct = 0
 
         # Step through dataloader output
         for step, batch in enumerate(dataloader):
@@ -225,13 +258,56 @@ def bluebert_train_model(model,
             optimizer.step()
             scheduler.step()
 
+            wandb.log({"loss": loss})
+            # TODO: log other metrics like accuracy and recall
+            # TODO: validation not being used yet
+
         avg_train_loss = total_loss / len(dataloader)
 
         # Store the loss value for plotting the learning curve.
         loss_values.append(avg_train_loss)
         print("")  # noqa: T001
         print("  Average training loss: ", avg_train_loss)  # noqa: T001
-        print("  Training epoch took: ", format_time(time.time() - t0))  # noqa: T001
+        print("  Training epoch took: ", format_time(time.time() - t0))  # noqa: T00
+
+        # Now calculate some evaluation metrics
+        val_dataset = ContraDataset(list(val_data_x),
+                                    val_data_y,
+                                    tokenizer,
+                                    max_len=512,
+                                    multi_class=multi_class)
+        val_sampler = WeightedRandomSampler(get_class_weights(val_data_y), len(val_data_x))
+        val_dataloader = DataLoader(val_dataset, sampler=val_sampler, batch_size=batch_size)
+
+        # Step through evaluation dataset
+        for step, batch in enumerate(val_dataloader):
+            claim, mask = batch[0].to(device), batch[1].to(device)
+            if criterion == 'crossentropy':
+                label = batch[2].to(device=device, dtype=torch.int64)
+                label = torch.max(label, 1)[1]
+            else:
+                label = batch[2].to(device).float()
+            y = model(claim, mask)
+            val_loss = torch_criterion(y, label)
+            total_val_loss += val_loss.item()
+
+            pred = y.max(1, keepdim=True)[1]
+            #print(y)
+            #print(type(y))
+            #print(pred)
+            #print(type(pred))
+            #print(claim)
+            #print(type(claim))
+            #print(mask)
+            #print(type(mask))
+            #print(label)
+            #print(type(label))
+            #print(mask.view_as(pred))
+            label_idx = label.max(1, keepdim=True)[1]
+            val_correct += pred.eq(label_idx.view_as(pred)).sum().item()
+
+        wandb.log({"Validation Loss": total_val_loss,
+                   "Validation Accuracy": 100. * val_correct / len(val_dataloader.dataset)})
 
     return model, loss_values
 
@@ -313,65 +389,73 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     # Create model
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
-    # Package data into a DataLoader
-    # TODO: class weights are always on
-    if use_multi_nli:
-        multinli_x_train_dataset = ContraDataset(list(multi_nli_train_x), multi_nli_train_y, tokenizer, max_len=512,
-                                                 multi_class=multi_class)
-        multinli_x_train_sampler = WeightedRandomSampler(get_class_weights(multi_nli_train_y), len(multi_nli_train_x))
-        multinli_x_train_dataloader = DataLoader(multinli_x_train_dataset,
-                                                 sampler=multinli_x_train_sampler, batch_size=batch_size)
-
-    if use_med_nli:
-        mednli_x_train_dataset = ContraDataset(list(med_nli_train_x), med_nli_train_y, tokenizer, max_len=512,
-                                               multi_class=multi_class)
-        mednli_x_train_sampler = WeightedRandomSampler(get_class_weights(med_nli_train_y), len(med_nli_train_x))
-        mednli_x_train_dataloader = DataLoader(mednli_x_train_dataset, sampler=mednli_x_train_sampler,
-                                               batch_size=batch_size)
-
-    if use_man_con:
-        mancon_x_train_dataset = ContraDataset(list(man_con_train_x), man_con_train_y, tokenizer, max_len=512,
-                                               multi_class=multi_class)
-        ## print(man_con_train_y)
-        mancon_x_train_sampler = WeightedRandomSampler(get_class_weights(man_con_train_y), len(man_con_train_x))
-        mancon_x_train_dataloader = DataLoader(mancon_x_train_dataset, sampler=mancon_x_train_sampler,
-                                               batch_size=batch_size)
-
-    if use_cord:
-        cord_x_train_dataset = ContraDataset(list(cord_train_x), cord_train_y, tokenizer, max_len=512,
-                                             multi_class=multi_class)
-        ## print(cord_train_y)
-        print(get_class_weights(cord_train_y))
-        cord_x_train_sampler = WeightedRandomSampler(get_class_weights(cord_train_y), len(cord_train_x))
-        cord_x_train_dataloader = DataLoader(cord_x_train_dataset, sampler=cord_x_train_sampler, batch_size=batch_size)
-
     losses_list = []
 
     # Fine tune model on MultiNLI
     if use_multi_nli:
-        model, losses = bluebert_train_model(model, multinli_x_train_dataloader, device, epochs=epochs,
-                                             learning_rate=learning_rate, criterion=criterion)
+        model, losses = bluebert_train_model(model,
+                                             multi_nli_train_x,
+                                             multi_nli_train_y,
+                                             multi_nli_test_x,
+                                             multi_nli_test_y,
+                                             tokenizer,
+                                             device,
+                                             batch_size=batch_size,
+                                             multi_class=multi_class,
+                                             epochs=epochs,
+                                             learning_rate=learning_rate,
+                                             criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
 
     # Fine tune model on MedNLI
     if use_med_nli:
-        model, losses = bluebert_train_model(model, mednli_x_train_dataloader, device, epochs=epochs,
-                                             learning_rate=learning_rate, criterion=criterion)
+        model, losses = bluebert_train_model(model,
+                                             med_nli_train_x,
+                                             med_nli_train_y,
+                                             med_nli_test_x,
+                                             med_nli_test_y,
+                                             tokenizer,
+                                             device,
+                                             batch_size=batch_size,
+                                             multi_class=multi_class,
+                                             epochs=epochs,
+                                             learning_rate=learning_rate,
+                                             criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
 
     # Fine tune model on ManConCorpus
     if use_man_con:
-        model, losses = bluebert_train_model(model, mancon_x_train_dataloader, device, epochs=epochs,
-                                             learning_rate=learning_rate, criterion=criterion)
+        model, losses = bluebert_train_model(model,
+                                             man_con_train_x,
+                                             man_con_train_y,
+                                             man_con_test_x,
+                                             man_con_test_y,
+                                             tokenizer,
+                                             device,
+                                             batch_size=batch_size,
+                                             multi_class=multi_class,
+                                             epochs=epochs,
+                                             learning_rate=learning_rate,
+                                             criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
 
     # Fine tune model on CORD
     if use_cord:
-        model, losses = bluebert_train_model(model, cord_x_train_dataloader, device, epochs=epochs,
-                                             learning_rate=learning_rate, criterion=criterion)
+        model, losses = bluebert_train_model(model,
+                                             cord_train_x,
+                                             cord_train_y,
+                                             cord_test_x,
+                                             cord_test_y,
+                                             tokenizer,
+                                             device,
+                                             batch_size=batch_size,
+                                             multi_class=multi_class,
+                                             epochs=epochs,
+                                             learning_rate=learning_rate,
+                                             criterion=criterion)
         losses_list.append(losses)
         print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 
