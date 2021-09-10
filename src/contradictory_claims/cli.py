@@ -230,6 +230,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                                                        cord_test_x, cord_test_y,
                                                        drug_names, virus_names,
                                                        model_name="allenai/biomed_roberta_base",
+                                                       out_dir=out_dir,
                                                        use_multi_nli=use_multinli,
                                                        use_med_nli=use_mednli,
                                                        use_man_con=use_mancon,
@@ -292,6 +293,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                                                  cord_train_x, cord_train_y,
                                                  cord_test_x, cord_test_y,
                                                  bluebert_model_path,
+                                                 out_dir,
                                                  use_multinli, use_mednli,
                                                  use_mancon, use_roamdev,
                                                  # learning_rate, #FIGURE THIS OUT
@@ -340,6 +342,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                               out_plot_dir=out_report_dir)
 
         if sbert:
+            # TODO: need to add in out_dir here so wandb can track this guy and save it to the output directory
             # note uses biobert model as base, so model_name is correct
             sbert_model, tokenizer = build_sbert_model("allenai/biomed_roberta_base", logistic_model=logistic_model)
             sbert_model = train_sbert_model(sbert_model,

@@ -149,6 +149,7 @@ def bluebert_train_model(model,
                          val_data_y,
                          tokenizer,
                          device,
+                         out_dir: str,
                          batch_size: int = 2,
                          multi_class: bool = True,
                          criterion=None,
@@ -167,6 +168,7 @@ def bluebert_train_model(model,
     :param val_data_y: val data sentence labels
     :param tokenizer: sentence encoding tokenizer
     :param device: CPU vs GPU definition for torch
+    :param out_dir: directory to output results (for wandb)
     :param batch_size: batch size for fine-tuning
     :param multi_class: if True, final layer is multiclass so softmax is used. If false, final layer
         is sigmoid and binary crossentropy is evaluated
@@ -210,10 +212,10 @@ def bluebert_train_model(model,
                                                 num_training_steps=total_steps)
 
     # Initialize WandB for tracking the training progress
-    wandb_dir = "./wandb_artifacts"
+    wandb_dir = f"{out_dir}/wandb_artifacts"
     if not os.path.exists(wandb_dir):
         os.makedirs(wandb_dir)
-    wandb.init(dir="./wandb_artifacts")
+    wandb.init(dir=f"{out_dir}/wandb_artifacts")
 
     wandb.watch(model, log_freq=100, log="all")
 
@@ -341,6 +343,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 cord_test_x: np.ndarray,
                                 cord_test_y: np.ndarray,
                                 bluebert_pretrained_path: str,
+                                out_dir: str,
                                 use_multi_nli: bool = True,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
@@ -371,6 +374,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param cord_test_x: CORD-19 test sentence pairs
     :param cord_test_y: CORD-19 test labels
     :param bluebert_pretrained_path: path to pretrained bluebert model, or huggingface model name
+    :param out_dir: path to output results (for wandb)
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
     :param use_multi_nli: if True, use MultiNLI in fine-tuning
@@ -399,6 +403,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              multi_nli_test_y,
                                              tokenizer,
                                              device,
+                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -416,6 +421,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              med_nli_test_y,
                                              tokenizer,
                                              device,
+                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -433,6 +439,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              man_con_test_y,
                                              tokenizer,
                                              device,
+                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -450,6 +457,7 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              cord_test_y,
                                              tokenizer,
                                              device,
+                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,

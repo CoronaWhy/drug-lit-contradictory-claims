@@ -185,6 +185,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 drug_names: list,  # not using currently...
                 virus_names: list,  # not using currently...
                 model_name: str,
+                out_dir: str,
                 multi_class: bool = True,
                 continue_fine_tuning: bool = False,
                 model_continue_sigmoid_path: str = None,
@@ -222,6 +223,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param virus_names: virus lexicon list
     :param model_name: model name to load from the pre-trained Transformers package. Expecting either
         "deepset/covid_bert_base" or "allenai/biomed_roberta_base"
+    :param out_dir: name of directory to output results
     :param multi_class: if True, final layer is multiclass so softmax is used. If False, final layer
         is sigmoid and binary crossentropy is evaluated.
     :param continue_fine_tuning: if True, continue fine tuning from a saved model
@@ -336,10 +338,10 @@ def train_model(multi_nli_train_x: np.ndarray,
         print("Please install GPU version of TF")  # noqa: T001
 
     # Initialize WandB for tracking the training progress
-    wandb_dir = "./wandb_artifacts"
+    wandb_dir = f"{out_dir}/wandb_artifacts"
     if not os.path.exists(wandb_dir):
         os.makedirs(wandb_dir)
-    wandb.init(dir="./wandb_artifacts")
+    wandb.init(dir=f"{out_dir}/wandb_artifacts")
 
     train_hist_list = []
 
