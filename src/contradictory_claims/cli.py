@@ -438,7 +438,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
         if bluebert:
             pass
-            # bluebert_trained_model, device = bluebert_load_model(bluebert_model_path)
+            # bluebert_trained_model, device = bluebert_load_model(# TODO pass the previous model, bluebert_model_path)
         if sbert:
             pass
             # sbert_dir = os.path.join(root_dir, sbert_trained_model_out_dir)
