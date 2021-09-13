@@ -486,15 +486,17 @@ def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: 
 
     bluebert_save_path = os.path.join(bluebert_save_path, "bluebert_model.pt")
 
-    torch.save(model, bluebert_save_path)
+    torch.save(model.save_dict(), bluebert_save_path)
     return
 
 
-def bluebert_load_model(bluebert_model_path: str):
+def bluebert_load_model(bluebert_model_path: str, bluebert_pretrained_path: str, multi_class: bool = True):
     """
     Load fine-tuned Bluebert model.
 
     :param bluebert_model_path: directory with saved model
+    :param bluebert_pretrained_path: path to pretrained bluebert model
+    :param multi_class: True if using a multi-class (not binary) setting
     :return: fine-tuned Bluebert Transformer model
     :return device: CPU vs GPU definition for torch
     """
@@ -506,7 +508,9 @@ def bluebert_load_model(bluebert_model_path: str):
         print('No GPU available, using the CPU instead.')  # noqa: T001
         device = torch.device("cpu")
 
-    model = torch.load(bluebert_model_path, map_location=device)
+    model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
+    model.load_state_dict(torch.load(bluebert_model_path, map_location=device))
+    # model = torch.load(bluebert_model_path, map_location=device)
     model.to(device)
 
     return model, device
