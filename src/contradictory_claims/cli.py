@@ -31,7 +31,7 @@ from .models.train_model import save_model, train_model
 @click.option('--train/--no-train', 'train', default=False)
 @click.option('--biobert/--no-biobert', 'biobert', default=True)
 @click.option('--bluebert/--no-bluebert', 'bluebert', default=False)
-@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')
+@click.option('--bluebert_model_path', 'bluebert_model_path', default='ttumyche/bluebert')  # Note sometimes called pretrained path
 @click.option('--sbert/--no-sbert', 'sbert', default=False)
 @click.option('--sbert-logistic-regression/--no-sbert-logistic-regression', 'logistic_model', default=True)
 @click.option('--multinli/--no-multinli', 'use_multinli', default=True)
@@ -207,10 +207,10 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
         # CONCLUSION: 0 = neutral, 1 = entailment, 2 = contradiction
 
         # COMMENT THIS OUT LATER
-        #cord_train_x = cord_train_x[0:50]
-        #cord_train_y = cord_train_y[0:50]
-        #cord_test_x = cord_test_x[0:50]
-        #cord_test_y = cord_test_y[0:50]
+        cord_train_x = cord_train_x[0:50]
+        cord_train_y = cord_train_y[0:50]
+        cord_test_x = cord_test_x[0:50]
+        cord_test_y = cord_test_y[0:50]
 
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
@@ -303,7 +303,7 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
 
             # Save model
             # bluebert_out_dir = f"output/trained_bluebert/bluebert_{uid}"
-            bluebert_save_model(bluebert_trained_model, bluebert_save_path=out_dir)
+            bluebert_save_model(bluebert_trained_model, timed_dir_name=False, bluebert_save_path=out_dir)
 
             # Save model train history
             out_train_hist_dir = os.path.join(out_dir, 'train_history.txt')

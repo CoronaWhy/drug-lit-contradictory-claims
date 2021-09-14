@@ -486,11 +486,11 @@ def bluebert_save_model(model, timed_dir_name: bool = True, bluebert_save_path: 
 
     bluebert_save_path = os.path.join(bluebert_save_path, "bluebert_model.pt")
 
-    torch.save(model.save_dict(), bluebert_save_path)
+    torch.save(model.state_dict(), bluebert_save_path)
     return
 
 
-def bluebert_load_model(bluebert_model_path: str, bluebert_pretrained_path: str, multi_class: bool = True):
+def bluebert_load_model(bluebert_model_path: str, bluebert_pretrained_path: str = 'ttumyche/bluebert', multi_class: bool = True):
     """
     Load fine-tuned Bluebert model.
 
