@@ -147,6 +147,16 @@ def load_med_nli(train_path: str, dev_path: str, test_path: str, drug_names: Lis
     mednli_test_data['gold_label'] = [2 if label == 'contradiction' else 1 if label == 'entailment' else 0 for
                                       label in mednli_test_data.gold_label]
 
+    print("TRAINING:")  # noqa: T001
+    print(f"Number of contradiction pairs: {len(mednli_data[mednli_data.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(mednli_data[mednli_data.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(mednli_data[mednli_data.label == 0])}")  # noqa: T001
+
+    print("\nTEST")  # noqa: T001
+    print(f"Number of contradiction pairs: {len(mednli_data[mednli_data.label == 2])}")  # noqa: T001
+    print(f"Number of entailment pairs: {len(mednli_data[mednli_data.label == 1])}")  # noqa: T001
+    print(f"Number of neutral pairs: {len(mednli_data[mednli_data.label == 0])}")  # noqa: T001
+
     # Number of training pairs per class to use. If None, use all training pairs
     if num_training_pairs_per_class is not None:
         print(f'Using only a subset of MedNLI for training: {num_training_pairs_per_class} training pairs per class')  # noqa: T001,E501
