@@ -207,10 +207,10 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
         # CONCLUSION: 0 = neutral, 1 = entailment, 2 = contradiction
 
         # COMMENT THIS OUT LATER
-        cord_train_x = cord_train_x[0:50]
-        cord_train_y = cord_train_y[0:50]
-        cord_test_x = cord_test_x[0:50]
-        cord_test_y = cord_test_y[0:50]
+        # cord_train_x = cord_train_x[0:50]
+        # cord_train_y = cord_train_y[0:50]
+        # cord_test_x = cord_test_x[0:50]
+        # cord_test_y = cord_test_y[0:50]
 
         drug_names, virus_names = load_drug_virus_lexicons(drug_lex_path, virus_lex_path)
 
