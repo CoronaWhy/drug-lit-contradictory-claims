@@ -116,7 +116,7 @@ def bluebert_create_model(bluebert_pretrained_path: str, multi_class: bool = Tru
     :return device: CPU vs GPU definition for torch
     """
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda:0")
         print('There are ', torch.cuda.device_count(), ' GPU(s) available.')  # noqa: T001
         print('We will use the GPU:', torch.cuda.get_device_name(0))  # noqa: T001
     else:
@@ -149,7 +149,6 @@ def bluebert_train_model(model,
                          val_data_y,
                          tokenizer,
                          device,
-                         out_dir: str,
                          batch_size: int = 2,
                          multi_class: bool = True,
                          criterion=None,
@@ -168,7 +167,6 @@ def bluebert_train_model(model,
     :param val_data_y: val data sentence labels
     :param tokenizer: sentence encoding tokenizer
     :param device: CPU vs GPU definition for torch
-    :param out_dir: directory to output results (for wandb)
     :param batch_size: batch size for fine-tuning
     :param multi_class: if True, final layer is multiclass so softmax is used. If false, final layer
         is sigmoid and binary crossentropy is evaluated
@@ -210,14 +208,6 @@ def bluebert_train_model(model,
     scheduler = get_linear_schedule_with_warmup(optimizer,
                                                 num_warmup_steps=0,
                                                 num_training_steps=total_steps)
-
-    # Initialize WandB for tracking the training progress
-    wandb_dir = f"{out_dir}/wandb_artifacts"
-    if not os.path.exists(wandb_dir):
-        os.makedirs(wandb_dir)
-    wandb.init(dir=f"{out_dir}/wandb_artifacts")
-
-    wandb.watch(model, log_freq=100, log="all")
 
     # Training loop
     for epoch in range(epochs):
@@ -392,6 +382,14 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     # Create model
     model, tokenizer, device = bluebert_create_model(bluebert_pretrained_path, multi_class=multi_class)
 
+    # Initialize WandB for tracking the training progress
+    wandb_dir = f"{out_dir}/wandb_artifacts"
+    if not os.path.exists(wandb_dir):
+        os.makedirs(wandb_dir)
+    wandb.init(dir=f"{out_dir}/wandb_artifacts")
+
+    wandb.watch(model, log_freq=100, log="all")
+
     losses_list = []
 
     # Fine tune model on MultiNLI
@@ -403,7 +401,6 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              multi_nli_test_y,
                                              tokenizer,
                                              device,
-                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -421,7 +418,6 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              med_nli_test_y,
                                              tokenizer,
                                              device,
-                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -439,7 +435,6 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              man_con_test_y,
                                              tokenizer,
                                              device,
-                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -457,7 +452,6 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                              cord_test_y,
                                              tokenizer,
                                              device,
-                                             out_dir=out_dir,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
@@ -501,7 +495,7 @@ def bluebert_load_model(bluebert_model_path: str, bluebert_pretrained_path: str 
     :return device: CPU vs GPU definition for torch
     """
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda:0")
         print('There are ', torch.cuda.device_count(), ' GPU(s) available.')  # noqa: T001
         print('We will use the GPU:', torch.cuda.get_device_name(0))  # noqa: T001
     else:

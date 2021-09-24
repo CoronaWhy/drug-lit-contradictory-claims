@@ -332,6 +332,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     print(model.summary())  # noqa: T001
 
     print("Okay now it's training time.......\n\n\n")  # noqa: T001
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     if tf.test.gpu_device_name():
         print(f'Default GPU Device:{tf.test.gpu_device_name()}')  # noqa: T001
     else:
