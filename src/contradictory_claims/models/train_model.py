@@ -153,14 +153,18 @@ def load_model(pickle_path: str, transformer_dir: str = 'transformer', max_len: 
 #     class_weights = class_weights / len(class_weights)
 #     return class_weights.tolist()
 
-def get_class_weights(target_list: np.array):
+def get_class_weights(target_list: np.array, use_class_weights: bool = True):
     """Return the class weights to tackle skewness in data while training.
     :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
+    :param use_class_weights: if True, calculate class weights based on num. in each class. If False, all weights equals
     :return: list of weights
     """
     n, n_classes = target_list.shape
-    weights = float(n) / target_list.sum(axis=0)
-    weights /= n_classes  # 3 typically
+    if use_class_weights:
+        weights = float(n) / target_list.sum(axis=0)
+        weights /= n_classes  # 3 typically
+    else:
+        weights = np.ones(n_classes)
     print(weights)
     weights_dict = dict(zip([0, 1, 2], weights))
     return weights_dict
@@ -194,6 +198,7 @@ def train_model(multi_nli_train_x: np.ndarray,
                 use_med_nli: bool = True,
                 use_man_con: bool = True,
                 use_cord: bool = True,
+                combined_data_for_training: bool = False,
                 epochs: int = 3,
                 max_len: int = 512,
                 batch_size: int = 32,
@@ -235,6 +240,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :param use_cord: if True, use CORD-19 in fine-tuning
+    :param combined_data_for_training: if True, use all datasets combined in fine-tuning
     :param epochs: number of epochs for training
     :param max_len: length of encoded inputs
     :param batch_size: batch size
@@ -346,51 +352,79 @@ def train_model(multi_nli_train_x: np.ndarray,
 
     train_hist_list = []
 
-    # Fine tune on MultiNLI
-    if use_multi_nli:
-        train_history = model.fit(multi_nli_train_x,
-                                  multi_nli_train_y,
+    if combined_data_for_training:
+        # Combine everything
+
+        combined_train_x = np.concatenate((multi_nli_train_x, med_nli_train_x, man_con_train_x, cord_train_x), axis=0)
+        combined_train_y = np.concatenate((multi_nli_train_y, med_nli_train_y, man_con_train_y, cord_train_y), axis=0)
+        train_idx_shuff = np.random.permutation(len(combined_train_x))
+        combined_train_x = combined_train_x[train_idx_shuff]
+        combined_train_y = combined_train_y[train_idx_shuff]
+
+        combined_test_x = np.concatenate((multi_nli_test_x, med_nli_test_x, man_con_test_x, cord_test_x), axis=0)
+        combined_test_y = np.concatenate((multi_nli_test_y, med_nli_test_y, man_con_test_y, cord_test_y), axis=0)
+        test_idx_shuff = np.random.permutation(len(combined_test_x))
+        combined_test_x = combined_test_x[test_idx_shuff]
+        combined_test_y = combined_test_y[test_idx_shuff]
+
+        train_history = model.fit(combined_train_x,
+                                  combined_train_y,
                                   batch_size=batch_size,
-                                  validation_data=(multi_nli_test_x, multi_nli_test_y),
+                                  validation_data=(combined_test_x, combined_test_y),
                                   callbacks=[es, WandbCallback()],
                                   epochs=epochs,
-                                  class_weight=get_class_weights(multi_nli_train_y))
+                                  class_weight=get_class_weights(combined_train_y, use_class_weights=class_weights))
         train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
         print(train_history)  # noqa: T001
 
-    # Fine tune on MedNLI
-    if use_med_nli:
-        train_history = model.fit(med_nli_train_x,
-                                  med_nli_train_y,
-                                  batch_size=batch_size,
-                                  validation_data=(med_nli_test_x, med_nli_test_y),
-                                  callbacks=[es, WandbCallback()],
-                                  epochs=epochs,
-                                  class_weight=get_class_weights(med_nli_train_y))
-        train_hist_list.append(train_history)
+    else:
+        # Fine tune on MultiNLI
+        if use_multi_nli:
+            train_history = model.fit(multi_nli_train_x,
+                                      multi_nli_train_y,
+                                      batch_size=batch_size,
+                                      validation_data=(multi_nli_test_x, multi_nli_test_y),
+                                      callbacks=[es, WandbCallback()],
+                                      epochs=epochs,
+                                      class_weight=get_class_weights(multi_nli_train_y, use_class_weights=class_weights))
+            train_hist_list.append(train_history)
 
-    # Fine tune on ManConCorpus
-    if use_man_con:
-        train_history = model.fit(man_con_train_x,
-                                  man_con_train_y,
-                                  batch_size=batch_size,
-                                  validation_data=(man_con_test_x, man_con_test_y),
-                                  callbacks=[es, WandbCallback()],
-                                  epochs=epochs,
-                                  class_weight=get_class_weights(man_con_train_y))
-        train_hist_list.append(train_history)
+            print("passed the multiNLI train. Now the history:")  # noqa: T001
+            print(train_history)  # noqa: T001
 
-    # Fine tune on CORD-19
-    if use_cord:
-        train_history = model.fit(cord_train_x,
-                                  cord_train_y,
-                                  batch_size=batch_size,
-                                  validation_data=(cord_test_x, cord_test_y),
-                                  callbacks=[es, WandbCallback()],
-                                  epochs=epochs,
-                                  class_weight=get_class_weights(cord_train_y))
-        train_hist_list.append(train_history)
+        # Fine tune on MedNLI
+        if use_med_nli:
+            train_history = model.fit(med_nli_train_x,
+                                      med_nli_train_y,
+                                      batch_size=batch_size,
+                                      validation_data=(med_nli_test_x, med_nli_test_y),
+                                      callbacks=[es, WandbCallback()],
+                                      epochs=epochs,
+                                      class_weight=get_class_weights(med_nli_train_y, use_class_weights=class_weights))
+            train_hist_list.append(train_history)
+
+        # Fine tune on ManConCorpus
+        if use_man_con:
+            train_history = model.fit(man_con_train_x,
+                                      man_con_train_y,
+                                      batch_size=batch_size,
+                                      validation_data=(man_con_test_x, man_con_test_y),
+                                      callbacks=[es, WandbCallback()],
+                                      epochs=epochs,
+                                      class_weight=get_class_weights(man_con_train_y, use_class_weights=class_weights))
+            train_hist_list.append(train_history)
+
+        # Fine tune on CORD-19
+        if use_cord:
+            train_history = model.fit(cord_train_x,
+                                      cord_train_y,
+                                      batch_size=batch_size,
+                                      validation_data=(cord_test_x, cord_test_y),
+                                      callbacks=[es, WandbCallback()],
+                                      epochs=epochs,
+                                      class_weight=get_class_weights(cord_train_y, use_class_weights=class_weights))
+            train_hist_list.append(train_history)
 
     return model, train_hist_list

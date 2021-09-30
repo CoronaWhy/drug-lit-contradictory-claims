@@ -156,7 +156,7 @@ def bluebert_train_model(model,
                          epochs: int = 3,
                          learning_rate: float = 1e-5,
                          seed: int = 42,
-                         enable_class_weights = True):
+                         use_class_weights: bool = False):
     """
     Train the Bluebert Transformer model.
 
@@ -175,7 +175,7 @@ def bluebert_train_model(model,
     :param epochs: number of epochs for training
     :param learning_rate: learning rate
     :param seed: random seed value for initialization
-    :param enable_class_weights: enable class weights for dealing with imbalance
+    :param use_class_weights: enable class weights for dealing with imbalance
     :return: fine-tuned Bluebert Transformer model
     """
     # Process the data
@@ -184,8 +184,11 @@ def bluebert_train_model(model,
                             tokenizer,
                             max_len=512,
                             multi_class=multi_class)
-    sampler = WeightedRandomSampler(get_class_weights(train_data_y), len(train_data_x))
+    sampler = WeightedRandomSampler(get_class_weights(train_data_y, use_class_weights=use_class_weights), len(train_data_x))
     dataloader = DataLoader(dataset, sampler=sampler, batch_size=batch_size)
+
+    n_neu_train, n_ent_train, n_con_train = train_data_y.sum(axis=0)
+    n_neu_val, n_ent_val, n_con_val = val_data_y.sum(axis=0)
 
     # Set training loss criterion and optimizer
     if criterion is None:
@@ -221,7 +224,20 @@ def bluebert_train_model(model,
         # Reset the total loss for this epoch.
         total_loss = 0
         total_val_loss = 0
+        train_correct = 0
         val_correct = 0
+        con_pred_train = 0
+        ent_pred_train = 0
+        neu_pred_train = 0
+        train_con_correct = 0
+        train_ent_correct = 0
+        train_neu_correct = 0
+        con_pred_val = 0
+        ent_pred_val = 0
+        neu_pred_val = 0
+        val_con_correct = 0
+        val_ent_correct = 0
+        val_neu_correct = 0
 
         # Step through dataloader output
         for step, batch in enumerate(dataloader):
@@ -245,13 +261,34 @@ def bluebert_train_model(model,
             loss = torch_criterion(y, label)
             total_loss += loss.item()
             loss.backward()
+            pred = y.max(1, keepdim=True)[1]
+            label_idx = label.max(1, keepdim=True)[1]
+            #print("Printing y")
+            #print(y)
+            #print("Printing pred")
+            #print(pred)
+            #print("printing label_idx")
+            #print(label_idx)
+            train_correct += pred.eq(label_idx.view_as(pred)).sum().item()
+            con_pred_train += (pred[0].item() == 2)
+            ent_pred_train += (pred[0].item() == 1)
+            neu_pred_train += (pred[0].item() == 0)
+            train_con_correct += (int(label_idx[0].item()) == 2) * pred.eq(label_idx.view_as(pred)).sum().item()
+            train_ent_correct += (int(label_idx[0].item()) == 1) * pred.eq(label_idx.view_as(pred)).sum().item()
+            train_neu_correct += (int(label_idx[0].item()) == 0) * pred.eq(label_idx.view_as(pred)).sum().item()
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
 
-            wandb.log({"Loss": loss})
-            # TODO: log other metrics like accuracy and recall
+        wandb.log({"Training Loss": loss,
+                   "Training Accuracy": 100. * train_correct / len(dataloader.dataset),
+                   "Train: Precision - Con": float(train_con_correct) / con_pred_train,
+                   "Train: Precision - Ent": float(train_ent_correct) / ent_pred_train,
+                   "Train: Precision - Neu": float(train_neu_correct) / neu_pred_train,
+                   "Train: Recall - Con": float(train_con_correct) / n_con_train,
+                   "Train: Recall - Ent": float(train_ent_correct) / n_ent_train,
+                   "Train: Recall - Neu": float(train_neu_correct) / n_neu_train})
 
         avg_train_loss = total_loss / len(dataloader)
 
@@ -267,7 +304,7 @@ def bluebert_train_model(model,
                                     tokenizer,
                                     max_len=512,
                                     multi_class=multi_class)
-        val_sampler = WeightedRandomSampler(get_class_weights(val_data_y), len(val_data_x))
+        val_sampler = WeightedRandomSampler(get_class_weights(val_data_y, use_class_weights=use_class_weights), len(val_data_x))
         val_dataloader = DataLoader(val_dataset, sampler=val_sampler, batch_size=batch_size)
 
         # Step through evaluation dataset
@@ -283,35 +320,42 @@ def bluebert_train_model(model,
             total_val_loss += val_loss.item()
 
             pred = y.max(1, keepdim=True)[1]
-            #print(y)
-            #print(type(y))
-            #print(pred)
-            #print(type(pred))
-            #print(claim)
-            #print(type(claim))
-            #print(mask)
-            #print(type(mask))
-            #print(label)
-            #print(type(label))
-            #print(mask.view_as(pred))
             label_idx = label.max(1, keepdim=True)[1]
             val_correct += pred.eq(label_idx.view_as(pred)).sum().item()
+            con_pred_val += (pred[0].item() == 2)  # TODO: finish this!!
+            ent_pred_val += (pred[0].item() == 1)
+            neu_pred_val+= (pred[0].item() == 0)
+            val_con_correct += (int(label_idx[0].item()) == 2) * pred.eq(label_idx.view_as(pred)).sum().item()
+            val_ent_correct += (int(label_idx[0].item()) == 1) * pred.eq(label_idx.view_as(pred)).sum().item()
+            val_neu_correct += (int(label_idx[0].item()) == 0) * pred.eq(label_idx.view_as(pred)).sum().item()
 
         wandb.log({"Validation Loss": total_val_loss,
-                   "Validation Accuracy": 100. * val_correct / len(val_dataloader.dataset)})
+                   "Validation Accuracy": 100. * val_correct / len(val_dataloader.dataset),
+                   "Val: Precision - Con": float(val_con_correct) / con_pred_val,
+                   "Val: Precision - Ent": float(val_ent_correct) / ent_pred_val,
+                   "Val: Precision - Neu": float(val_neu_correct) / neu_pred_val,
+                   "Val: Recall - Con": float(val_con_correct) / n_con_val,
+                   "Val: Recall - Ent": float(val_ent_correct) / n_ent_val,
+                   "Val: Recall - Neu": float(val_neu_correct) / n_neu_val})
 
     return model, loss_values
 
 
-def get_class_weights(target_list: np.array):
+def get_class_weights(target_list: np.array, use_class_weights: bool = True):
     """Return the class weights to tackle skewness in data while training.
     :param target_list: numpy array list indicating binary-encoded class membership for calculating imbalance
+    :param use_class_weights: if True, calculate class weights based on num. in each class. If False, all weights equals
     :return: list of weights
     """
     n, n_classes = target_list.shape
-    weights = float(n) / target_list.sum(axis=0)
-    weights /= n_classes  # 3 typically
-
+    if use_class_weights:
+        weights = float(n) / target_list.sum(axis=0)
+        weights /= n_classes  # 3 typically
+    else:
+        weights = np.ones(n_classes)
+    print(weights)
+    #weights_dict = dict(zip([0, 1, 2], weights))
+    #return weights_dict
     return weights
 
 
@@ -338,12 +382,13 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
                                 use_med_nli: bool = True,
                                 use_man_con: bool = True,
                                 use_cord: bool = True,
+                                combined_data_for_training: bool = False,
                                 epochs: int = 3,
                                 batch_size: int = 32,
                                 criterion: str = None,
                                 multi_class: bool = True,
                                 learning_rate: float = 1e-5,
-                                enable_class_weights: bool = True):
+                                class_weights: bool = True):
     """
     Create and train the Bluebert Transformer model.
 
@@ -371,11 +416,12 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
     :param use_med_nli: if True, use MedNLI in fine-tuning
     :param use_man_con: if True, use ManConCorpus in fine-tuning
     :param use_cord: if True, use CORD-19 in fine-tuning
+    :param combined_data_for_training: if True, use all datasets combined in fine-tuning
     :param epochs: number of epochs for training
     :param batch_size: batch size for fine-tuning
     :param criterion: training loss criterion
     :param learning_rate: learning rate
-    :param enable_class_weights: enable class weighting to deal with the imbalance
+    :param class_weights: enable class weights for dealing with imbalance
     :return: fine-tuned Bluebert Transformer model
     :return device: CPU vs GPU definition for torch
     """
@@ -392,73 +438,110 @@ def bluebert_create_train_model(multi_nli_train_x: np.ndarray,
 
     losses_list = []
 
-    # Fine tune model on MultiNLI
-    if use_multi_nli:
-        model, losses = bluebert_train_model(model,
-                                             multi_nli_train_x,
-                                             multi_nli_train_y,
-                                             multi_nli_test_x,
-                                             multi_nli_test_y,
-                                             tokenizer,
-                                             device,
-                                             batch_size=batch_size,
-                                             multi_class=multi_class,
-                                             epochs=epochs,
-                                             learning_rate=learning_rate,
-                                             criterion=criterion)
-        losses_list.append(losses)
-        print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
+    if combined_data_for_training:
+        # Combine everything
 
-    # Fine tune model on MedNLI
-    if use_med_nli:
-        model, losses = bluebert_train_model(model,
-                                             med_nli_train_x,
-                                             med_nli_train_y,
-                                             med_nli_test_x,
-                                             med_nli_test_y,
-                                             tokenizer,
-                                             device,
-                                             batch_size=batch_size,
-                                             multi_class=multi_class,
-                                             epochs=epochs,
-                                             learning_rate=learning_rate,
-                                             criterion=criterion)
-        losses_list.append(losses)
-        print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
+        combined_train_x = np.concatenate((multi_nli_train_x, med_nli_train_x, man_con_train_x, cord_train_x), axis=0)
+        combined_train_y = np.concatenate((multi_nli_train_y, med_nli_train_y, man_con_train_y, cord_train_y), axis=0)
+        train_idx_shuff = np.random.permutation(len(combined_train_x))
+        combined_train_x = combined_train_x[train_idx_shuff]
+        combined_train_y = combined_train_y[train_idx_shuff]
 
-    # Fine tune model on ManConCorpus
-    if use_man_con:
-        model, losses = bluebert_train_model(model,
-                                             man_con_train_x,
-                                             man_con_train_y,
-                                             man_con_test_x,
-                                             man_con_test_y,
-                                             tokenizer,
-                                             device,
-                                             batch_size=batch_size,
-                                             multi_class=multi_class,
-                                             epochs=epochs,
-                                             learning_rate=learning_rate,
-                                             criterion=criterion)
-        losses_list.append(losses)
-        print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
+        combined_test_x = np.concatenate((multi_nli_test_x, med_nli_test_x, man_con_test_x, cord_test_x), axis=0)
+        combined_test_y = np.concatenate((multi_nli_test_y, med_nli_test_y, man_con_test_y, cord_test_y), axis=0)
+        test_idx_shuff = np.random.permutation(len(combined_test_x))
+        combined_test_x = combined_test_x[test_idx_shuff]
+        combined_test_y = combined_test_y[test_idx_shuff]
 
-    # Fine tune model on CORD
-    if use_cord:
         model, losses = bluebert_train_model(model,
-                                             cord_train_x,
-                                             cord_train_y,
-                                             cord_test_x,
-                                             cord_test_y,
+                                             combined_train_x,
+                                             combined_train_y,
+                                             combined_test_x,
+                                             combined_test_y,
                                              tokenizer,
                                              device,
                                              batch_size=batch_size,
                                              multi_class=multi_class,
                                              epochs=epochs,
                                              learning_rate=learning_rate,
-                                             criterion=criterion)
+                                             criterion=criterion,
+                                             use_class_weights=class_weights)
+
         losses_list.append(losses)
-        print('Completed Bluebert fine tuning on CORD')  # noqa: T001
+        print("Completed BlueBERT fine tuning on the COMBINED dataset.")
+
+    else:
+        # Fine tune model on MultiNLI
+        if use_multi_nli:
+            model, losses = bluebert_train_model(model,
+                                                 multi_nli_train_x,
+                                                 multi_nli_train_y,
+                                                 multi_nli_test_x,
+                                                 multi_nli_test_y,
+                                                 tokenizer,
+                                                 device,
+                                                 batch_size=batch_size,
+                                                 multi_class=multi_class,
+                                                 epochs=epochs,
+                                                 learning_rate=learning_rate,
+                                                 criterion=criterion,
+                                                 use_class_weights=class_weights)
+            losses_list.append(losses)
+            print('Completed Bluebert fine tuning on MultiNLI')  # noqa: T001
+
+        # Fine tune model on MedNLI
+        if use_med_nli:
+            model, losses = bluebert_train_model(model,
+                                                 med_nli_train_x,
+                                                 med_nli_train_y,
+                                                 med_nli_test_x,
+                                                 med_nli_test_y,
+                                                 tokenizer,
+                                                 device,
+                                                 batch_size=batch_size,
+                                                 multi_class=multi_class,
+                                                 epochs=epochs,
+                                                 learning_rate=learning_rate,
+                                                 criterion=criterion,
+                                                 use_class_weights=class_weights)
+            losses_list.append(losses)
+            print('Completed Bluebert fine tuning on MedNLI')  # noqa: T001
+
+        # Fine tune model on ManConCorpus
+        if use_man_con:
+            model, losses = bluebert_train_model(model,
+                                                 man_con_train_x,
+                                                 man_con_train_y,
+                                                 man_con_test_x,
+                                                 man_con_test_y,
+                                                 tokenizer,
+                                                 device,
+                                                 batch_size=batch_size,
+                                                 multi_class=multi_class,
+                                                 epochs=epochs,
+                                                 learning_rate=learning_rate,
+                                                 criterion=criterion,
+                                                 use_class_weights=class_weights)
+            losses_list.append(losses)
+            print('Completed Bluebert fine tuning on ManConCorpus')  # noqa: T001
+
+        # Fine tune model on CORD
+        if use_cord:
+            model, losses = bluebert_train_model(model,
+                                                 cord_train_x,
+                                                 cord_train_y,
+                                                 cord_test_x,
+                                                 cord_test_y,
+                                                 tokenizer,
+                                                 device,
+                                                 batch_size=batch_size,
+                                                 multi_class=multi_class,
+                                                 epochs=epochs,
+                                                 learning_rate=learning_rate,
+                                                 criterion=criterion,
+                                                 use_class_weights=class_weights)
+            losses_list.append(losses)
+            print('Completed Bluebert fine tuning on CORD')  # noqa: T001
 
     return model, losses, device
 

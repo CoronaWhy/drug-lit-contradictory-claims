@@ -38,6 +38,7 @@ from .models.train_model import save_model, train_model
 @click.option('--mednli/--no-mednli', 'use_mednli', default=False)
 @click.option('--mancon/--no-mancon', 'use_mancon', default=False)
 @click.option('--roamdev/--no-roamdev', 'use_roamdev', default=False)
+@click.option('--combined/--no-combined', 'combined', default=False)
 @click.option('--extract-claims/--no-extract-claims', 'extract_claims', default=False)
 @click.option('--report/--no-report', 'report', default=True)
 @click.option('--mancon-report/--no-mancon-report', 'mancon_report', default=True)
@@ -49,7 +50,7 @@ from .models.train_model import save_model, train_model
 @click.option('--class_weights', 'class_weights', default=False)
 @click.option('--aux_input', 'aux_input', default=False)
 def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic_model, use_multinli,
-         use_mednli, use_mancon, use_roamdev, extract_claims, mancon_report, report, multi_class, cord_version, learning_rate,
+         use_mednli, use_mancon, use_roamdev, combined, extract_claims, mancon_report, report, multi_class, cord_version, learning_rate,
          batch_size, epochs, class_weights, aux_input):
     """Run main function."""
 
@@ -235,10 +236,12 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                                                        use_med_nli=use_mednli,
                                                        use_man_con=use_mancon,
                                                        use_cord=use_roamdev,
+                                                       combined_data_for_training=combined,
                                                        epochs=epochs,
-                                                       batch_size=batch_size,  # class_weights, aux_input,
+                                                       batch_size=batch_size,  # aux_input,
                                                        learning_rate=learning_rate,
-                                                       multi_class=multi_class)
+                                                       multi_class=multi_class,
+                                                       class_weights=class_weights)
 
             # Save model
             # out_dir = 'output/working/biomed_roberta_base/'
@@ -296,10 +299,12 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
                                                  out_dir,
                                                  use_multinli, use_mednli,
                                                  use_mancon, use_roamdev,
-                                                 # learning_rate, #FIGURE THIS OUT
+                                                 combined_data_for_training=combined,
+                                                 learning_rate=learning_rate,
                                                  batch_size=batch_size,
-                                                 epochs=epochs,  # class_weights, aux_input, ?
-                                                 multi_class=multi_class)
+                                                 epochs=epochs,  # aux_input, ?
+                                                 multi_class=multi_class,
+                                                 class_weights=class_weights)
 
             # Save model
             # bluebert_out_dir = f"output/trained_bluebert/bluebert_{uid}"
