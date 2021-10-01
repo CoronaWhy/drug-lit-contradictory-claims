@@ -116,6 +116,8 @@ def bluebert_create_model(bluebert_pretrained_path: str, multi_class: bool = Tru
     :return device: CPU vs GPU definition for torch
     """
     if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.memory_summary(device=None, abbreviated=False)
         device = torch.device("cuda:0")
         print('There are ', torch.cuda.device_count(), ' GPU(s) available.')  # noqa: T001
         print('We will use the GPU:', torch.cuda.get_device_name(0))  # noqa: T001
