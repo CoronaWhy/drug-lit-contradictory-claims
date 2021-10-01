@@ -372,8 +372,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                   batch_size=batch_size,
                                   validation_data=(combined_test_x, combined_test_y),
                                   callbacks=[es, WandbCallback()],
-                                  epochs=epochs,
-                                  class_weight=get_class_weights(combined_train_y, use_class_weights=class_weights))
+                                  epochs=epochs) #,
+                                  # class_weight=get_class_weights(combined_train_y, use_class_weights=class_weights))
         train_hist_list.append(train_history)
 
         print("passed the multiNLI train. Now the history:")  # noqa: T001
@@ -387,8 +387,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       batch_size=batch_size,
                                       validation_data=(multi_nli_test_x, multi_nli_test_y),
                                       callbacks=[es, WandbCallback()],
-                                      epochs=epochs,
-                                      class_weight=get_class_weights(multi_nli_train_y, use_class_weights=class_weights))
+                                      epochs=epochs) #,
+                                      # class_weight=get_class_weights(multi_nli_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
 
             print("passed the multiNLI train. Now the history:")  # noqa: T001
@@ -401,8 +401,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       batch_size=batch_size,
                                       validation_data=(med_nli_test_x, med_nli_test_y),
                                       callbacks=[es, WandbCallback()],
-                                      epochs=epochs,
-                                      class_weight=get_class_weights(med_nli_train_y, use_class_weights=class_weights))
+                                      epochs=epochs) #,
+                                      # class_weight=get_class_weights(med_nli_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
 
         # Fine tune on ManConCorpus
@@ -412,8 +412,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       batch_size=batch_size,
                                       validation_data=(man_con_test_x, man_con_test_y),
                                       callbacks=[es, WandbCallback()],
-                                      epochs=epochs,
-                                      class_weight=get_class_weights(man_con_train_y, use_class_weights=class_weights))
+                                      epochs=epochs) #,
+                                      # class_weight=get_class_weights(man_con_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
 
         # Fine tune on CORD-19
@@ -423,8 +423,8 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       batch_size=batch_size,
                                       validation_data=(cord_test_x, cord_test_y),
                                       callbacks=[es, WandbCallback()],
-                                      epochs=epochs,
-                                      class_weight=get_class_weights(cord_train_y, use_class_weights=class_weights))
+                                      epochs=epochs) #,
+                                      # class_weight=get_class_weights(cord_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
 
     return model, train_hist_list

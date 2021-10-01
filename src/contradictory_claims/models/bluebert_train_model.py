@@ -283,12 +283,12 @@ def bluebert_train_model(model,
 
         wandb.log({"Training Loss": loss,
                    "Training Accuracy": 100. * train_correct / len(dataloader.dataset),
-                   "Train: Precision - Con": float(train_con_correct) / con_pred_train,
-                   "Train: Precision - Ent": float(train_ent_correct) / ent_pred_train,
-                   "Train: Precision - Neu": float(train_neu_correct) / neu_pred_train,
-                   "Train: Recall - Con": float(train_con_correct) / n_con_train,
-                   "Train: Recall - Ent": float(train_ent_correct) / n_ent_train,
-                   "Train: Recall - Neu": float(train_neu_correct) / n_neu_train})
+                   "Train: Precision - Con": np.float64(train_con_correct) / con_pred_train,
+                   "Train: Precision - Ent": np.float64(train_ent_correct) / ent_pred_train,
+                   "Train: Precision - Neu": np.float64(train_neu_correct) / neu_pred_train,
+                   "Train: Recall - Con": np.float64(train_con_correct) / n_con_train,
+                   "Train: Recall - Ent": np.float64(train_ent_correct) / n_ent_train,
+                   "Train: Recall - Neu": np.float64(train_neu_correct) / n_neu_train})
 
         avg_train_loss = total_loss / len(dataloader)
 
@@ -331,12 +331,12 @@ def bluebert_train_model(model,
 
         wandb.log({"Validation Loss": total_val_loss,
                    "Validation Accuracy": 100. * val_correct / len(val_dataloader.dataset),
-                   "Val: Precision - Con": float(val_con_correct) / con_pred_val,
-                   "Val: Precision - Ent": float(val_ent_correct) / ent_pred_val,
-                   "Val: Precision - Neu": float(val_neu_correct) / neu_pred_val,
-                   "Val: Recall - Con": float(val_con_correct) / n_con_val,
-                   "Val: Recall - Ent": float(val_ent_correct) / n_ent_val,
-                   "Val: Recall - Neu": float(val_neu_correct) / n_neu_val})
+                   "Val: Precision - Con": np.float64(val_con_correct) / con_pred_val,
+                   "Val: Precision - Ent": np.float64(val_ent_correct) / ent_pred_val,
+                   "Val: Precision - Neu": np.float64(val_neu_correct) / neu_pred_val,
+                   "Val: Recall - Con": np.float64(val_con_correct) / n_con_val,
+                   "Val: Recall - Ent": np.float64(val_ent_correct) / n_ent_val,
+                   "Val: Recall - Neu": np.float64(val_neu_correct) / n_neu_val})
 
     return model, loss_values
 
