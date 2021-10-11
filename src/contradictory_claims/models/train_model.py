@@ -255,7 +255,7 @@ def train_model(multi_nli_train_x: np.ndarray,
     # First load the real tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    if use_multi_nli:
+    if use_multi_nli or combined_data_for_training:
         multi_nli_train_x_str = [str(sen) for sen in multi_nli_train_x]
         multi_nli_train_x = regular_encode(multi_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with multi_nli_train_x_str")  # noqa: T001
@@ -264,7 +264,7 @@ def train_model(multi_nli_train_x: np.ndarray,
         multi_nli_test_x = regular_encode(multi_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with multi_nli_test_x_str")  # noqa: T001
 
-    if use_med_nli:
+    if use_med_nli or combined_data_for_training:
         med_nli_train_x_str = [str(sen) for sen in med_nli_train_x]
         med_nli_train_x = regular_encode(med_nli_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with med_nli_train_x_str")  # noqa: T001
@@ -273,7 +273,7 @@ def train_model(multi_nli_train_x: np.ndarray,
         med_nli_test_x = regular_encode(med_nli_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with med_nli_test_x_str")  # noqa: T001
 
-    if use_man_con:
+    if use_man_con or combined_data_for_training:
         man_con_train_x_str = [str(sen) for sen in man_con_train_x]
         man_con_train_x = regular_encode(man_con_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with man_con_train_x_str")  # noqa: T001
@@ -282,7 +282,7 @@ def train_model(multi_nli_train_x: np.ndarray,
         man_con_test_x = regular_encode(man_con_test_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with man_con_test_x_str")  # noqa: T001
 
-    if use_cord:
+    if use_cord or combined_data_for_training:
         cord_train_x_str = [str(sen) for sen in cord_train_x]
         cord_train_x = regular_encode(cord_train_x_str, tokenizer, maxlen=max_len, multi_class=multi_class)
         print("Done with cord_train_x_str")  # noqa: T001
