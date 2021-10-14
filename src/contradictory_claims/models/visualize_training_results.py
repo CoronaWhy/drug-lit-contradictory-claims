@@ -1,4 +1,4 @@
-"""Functions to build, save, load and train the contradictory claims Transformer model based on biomed_roberta_base."""
+"""Functions for visualizing the results of the BERT training."""
 
 # -*- coding: utf-8 -*-
 
