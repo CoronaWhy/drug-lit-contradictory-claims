@@ -367,6 +367,14 @@ def load_mancon_corpus_from_sent_pairs(mancon_sent_pair_path: str,
     return x_train, y_train, x_test, y_test
 
 
+#def load_mancon_corpus_from_sent_pairs_for_eval(mancon_sent_pair_path: str,
+#                                                drug_names: List[str] = None,
+#                                                multi_class: bool = True,  # noqa: D205,D400
+#                                                repl_drug_with_spl_tkn: bool = False,
+#                                                downsample_neutrals: bool = True):
+#
+
+
 def load_drug_virus_lexicons(drug_lex_path: str, virus_lex_path: str):
     """
     Load drug and virus lexicons.
