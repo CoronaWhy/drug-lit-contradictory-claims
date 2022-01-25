@@ -393,8 +393,8 @@ def train_model(multi_nli_train_x: np.ndarray,
 
             print("passed the multiNLI train. Now the history:")  # noqa: T001
             print(train_history)  # noqa: T001
-            print("NOW TO EVALUATE:")  #noqa: T001
-            print(model.evaluate())
+            ## print("NOW TO EVALUATE:")  #noqa: T001
+            ## print(model.evaluate())    ### DOESN'T WORK
 
         # Fine tune on MedNLI
         if use_med_nli:
@@ -406,8 +406,6 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       epochs=epochs) #,
                                       # class_weight=get_class_weights(med_nli_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
-            print("NOW TO EVALUATE:")  #noqa: T001
-            print(model.evaluate())
 
         # Fine tune on ManConCorpus
         if use_man_con:
@@ -419,8 +417,6 @@ def train_model(multi_nli_train_x: np.ndarray,
                                       epochs=epochs) #,
                                       # class_weight=get_class_weights(man_con_train_y, use_class_weights=class_weights))
             train_hist_list.append(train_history)
-            print("NOW TO EVALUATE:")  #noqa: T001
-            print(model.evaluate())
 
         # Fine tune on CORD-19
         if use_cord:
