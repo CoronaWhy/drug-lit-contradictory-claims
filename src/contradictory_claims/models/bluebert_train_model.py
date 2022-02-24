@@ -265,26 +265,33 @@ def bluebert_train_model(model,
             loss.backward()
             pred = y.max(1, keepdim=True)[1]
             label_idx = label.max(1, keepdim=True)[1]
-            #print("Printing y")
-            #print(y)
-            #print("Printing pred")
-            #print(pred)
-            #print("printing label_idx")
-            #print(label_idx)
+            #print(f"TRAIN - Printing y: {y}")
+            #print(f"TRAIN - Printing pred: {pred}")
+            #print(f"TRAIN - printing label_idx (true label?): {label_idx}")
+            #print(type(label_idx))
+            #print(f"TRAIN ---- Adding a correct tally? {pred.eq(label_idx.view_as(pred))}") # NOTE TOOK OUT SUM!!
             train_correct += pred.eq(label_idx.view_as(pred)).sum().item()
-            con_pred_train += (pred[0].item() == 2)
-            ent_pred_train += (pred[0].item() == 1)
-            neu_pred_train += (pred[0].item() == 0)
-            train_con_correct += (int(label_idx[0].item()) == 2) * pred.eq(label_idx.view_as(pred)).sum().item()
-            train_ent_correct += (int(label_idx[0].item()) == 1) * pred.eq(label_idx.view_as(pred)).sum().item()
-            train_neu_correct += (int(label_idx[0].item()) == 0) * pred.eq(label_idx.view_as(pred)).sum().item()
+            con_pred_train += (pred == 2).sum().item()
+            ent_pred_train += (pred == 1).sum().item()
+            neu_pred_train += (pred == 0).sum().item()
+
+            train_con_correct += (pred.eq(label_idx) * (label_idx == 2)).sum().item()
+            train_ent_correct += (pred.eq(label_idx) * (label_idx == 1)).sum().item()
+            train_neu_correct += (pred.eq(label_idx) * (label_idx == 0)).sum().item()
+            #print(f"con_pred_train: {con_pred_train}")
+            #print(f"ent_pred_train: {ent_pred_train}")
+            #print(f"neu_pred_train: {neu_pred_train}")
+            #print(f"train_con_correct: {train_con_correct}")
+            #print(f"train_ent_correct: {train_ent_correct}")
+            #print(f"train_neu_correct: {train_neu_correct}")
+
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
 
-        wandb.log({"Training Loss": loss,
-                   "Training Accuracy": 100. * train_correct / len(dataloader.dataset),
+        wandb.log({"Training Loss": total_loss,
+                   "Training Accuracy": train_correct / len(dataloader.dataset),
                    "Train: Precision - Con": np.float64(train_con_correct) / con_pred_train,
                    "Train: Precision - Ent": np.float64(train_ent_correct) / ent_pred_train,
                    "Train: Precision - Neu": np.float64(train_neu_correct) / neu_pred_train,
@@ -323,16 +330,30 @@ def bluebert_train_model(model,
 
             pred = y.max(1, keepdim=True)[1]
             label_idx = label.max(1, keepdim=True)[1]
+
+            #print("VALIDATION!!:")
+            #print(f"VAL - Printing y: {y}")
+            #print(f"VAL - Printing pred: {pred}")
+            #print(f"VAL - printing label_idx (true label?): {label_idx}")
+
             val_correct += pred.eq(label_idx.view_as(pred)).sum().item()
-            con_pred_val += (pred[0].item() == 2)  # TODO: finish this!!
-            ent_pred_val += (pred[0].item() == 1)
-            neu_pred_val+= (pred[0].item() == 0)
-            val_con_correct += (int(label_idx[0].item()) == 2) * pred.eq(label_idx.view_as(pred)).sum().item()
-            val_ent_correct += (int(label_idx[0].item()) == 1) * pred.eq(label_idx.view_as(pred)).sum().item()
-            val_neu_correct += (int(label_idx[0].item()) == 0) * pred.eq(label_idx.view_as(pred)).sum().item()
+            con_pred_val += (pred == 2).sum().item()
+            ent_pred_val += (pred == 1).sum().item()
+            neu_pred_val += (pred == 0).sum().item()
+
+            val_con_correct += (pred.eq(label_idx) * (label_idx == 2)).sum().item()
+            val_ent_correct += (pred.eq(label_idx) * (label_idx == 1)).sum().item()
+            val_neu_correct += (pred.eq(label_idx) * (label_idx == 0)).sum().item()
+
+            #print(f"con_pred_val: {con_pred_val}")
+            #print(f"ent_pred_val: {ent_pred_val}")
+            #print(f"neu_pred_val: {neu_pred_val}")
+            #print(f"val_con_correct: {val_con_correct}")
+            #print(f"val_ent_correct: {val_ent_correct}")
+            #print(f"val_neu_correct: {val_neu_correct}")
 
         wandb.log({"Validation Loss": total_val_loss,
-                   "Validation Accuracy": 100. * val_correct / len(val_dataloader.dataset),
+                   "Validation Accuracy": val_correct / len(val_dataloader.dataset),
                    "Val: Precision - Con": np.float64(val_con_correct) / con_pred_val,
                    "Val: Precision - Ent": np.float64(val_ent_correct) / ent_pred_val,
                    "Val: Precision - Neu": np.float64(val_neu_correct) / neu_pred_val,
@@ -355,7 +376,7 @@ def get_class_weights(target_list: np.array, use_class_weights: bool = True):
         weights /= n_classes  # 3 typically
     else:
         weights = np.ones(n_classes)
-    print(weights)
+    #print(weights)
     #weights_dict = dict(zip([0, 1, 2], weights))
     #return weights_dict
     return weights

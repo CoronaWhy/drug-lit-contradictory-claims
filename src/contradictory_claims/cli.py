@@ -9,6 +9,7 @@ import shutil
 
 import click
 import pandas as pd
+import numpy as np
 
 from .models.bluebert_evaluate_model import bluebert_make_predictions
 from .data.make_dataset import create_mancon_sent_pairs_from_xml,\
@@ -193,21 +194,46 @@ def main(out_dir, train, biobert, bluebert, bluebert_model_path, sbert, logistic
             load_mancon_corpus_from_sent_pairs(mancon_sent_pairs, multi_class=multi_class, drug_names=drug_names)
         cord_train_x, cord_train_y, cord_test_x, cord_test_y = \
             load_cord_pairs_v2(cord19_training_data_path, 'Train', 'Val', multi_class=multi_class)
+
+        #print(multi_nli_train_y.sum(axis=0))
+        #print(multi_nli_test_y.sum(axis=0))
+        #print(med_nli_train_y.sum(axis=0))
+        #print(med_nli_test_y.sum(axis=0))
+        #print(man_con_train_y.sum(axis=0))
+        #print(man_con_test_y.sum(axis=0))
+        #print(cord_train_y.sum(axis=0))
+        #print(cord_test_y.sum(axis=0))
+
+        ##print(type(multi_nli_train_x))
+
+
         #print("YES")
         #print(eval_data[0:5])
         #print(med_nli_train_y[0:5])
-        #print(multi_nli_train_x[0:5])
+        ##print(multi_nli_train_x[0:5])
         #print(multi_nli_train_y[0:5])
-        #print(med_nli_train_x[0:5])
+        ##print(med_nli_train_x[0:5])
         #print(med_nli_train_y[0:5])
-        #print(man_con_train_x[0:5])
+        ##print(man_con_train_x[0:5])
         #print(man_con_train_y[0:5])
         #print(man_con_train_y.sum(axis=0))
-        #print(cord_train_x[0:5])
+        ##print(cord_train_x[0:5])
         #print(cord_train_y[0:5])
         # CONCLUSION: 0 = neutral, 1 = entailment, 2 = contradiction
 
         # COMMENT THIS OUT LATER
+        #multi_nli_train_x = multi_nli_train_x[0:50]
+        #multi_nli_train_y = multi_nli_train_y[0:50]
+        #multi_nli_test_x = multi_nli_test_x[0:50]
+        #multi_nli_test_y = multi_nli_test_y[0:50]
+        #med_nli_train_x = med_nli_train_x[0:50]
+        #med_nli_train_y = med_nli_train_y[0:50]
+        #med_nli_test_x = med_nli_test_x[0:50]
+        #med_nli_test_y = med_nli_test_y[0:50]
+        # cord_train_x = cord_train_x[0:50]
+        # cord_train_y = cord_train_y[0:50]
+        # cord_test_x = cord_test_x[0:50]
+        # cord_test_y = cord_test_y[0:50]
         # cord_train_x = cord_train_x[0:50]
         # cord_train_y = cord_train_y[0:50]
         # cord_test_x = cord_test_x[0:50]
